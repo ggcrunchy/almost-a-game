@@ -1,0 +1,55 @@
+---------------------------
+-- TileScreen
+-- Goes to the tile screen
+---------------------------
+function TileScreen ()
+	-- Load the common core.
+	local tile, level = NewAsset("Image", .05, .85, .1, .125, nil), Get("Level");
+	local data = EditorCore(
+		function(gp, column, row, current)
+			level:SetCell("tile", column, row, tile:GetPicture(), true);
+		end,
+		function(gp, column, row)
+			return level:GetCell("tile", column, row, true);
+		end,
+		function(gp, column, row, x, y, w, h)
+			level:GetCell("tile", column, row, true):Draw(x, y, w, h);
+		end,
+		SpawnPointScreen, TriggerScreen
+	);
+	
+	-- Enumerate the available tiles.
+	local pictureset = {};
+	table.insert(pictureset, nil);
+	for file in ScanFolder("Assets/Textures/Tiles") do
+		local picture = NewAsset("Picture");
+		if picture:LoadPicture("Assets/Textures/Tiles/" .. file, 0, 0, 1, 1) then
+			table.insert(pictureset, picture);
+		end
+	end
+	
+	-- Load the tile selection.
+	local static = Widgets("Static", Column(.025, .225, .85, .15, .05));
+	local choose, index = Widgets("Button", Column(.025, .175, .85, .05, .05)), 1;
+	table.insert(data, static("Prev Tile", false));
+	table.insert(data, choose(function()
+		if index ~= 1 then
+			index = index - 1;
+			tile:SetPicture(pictureset[index]);
+		end	
+	end, "-"));
+	table.insert(data, static("Next Tile", false));
+	table.insert(data, choose(function()
+		if index ~= table.getn(pictureset) then
+			index = index + 1;
+			tile:SetPicture(pictureset[index]);
+		end
+	end, "+"));
+	table.insert(data, tile);
+		
+	-- Install the tile table.
+	LoadUI(data);
+	
+	-- Indicate that the tile screen is current.
+	Set("Title", "Tiles");
+end

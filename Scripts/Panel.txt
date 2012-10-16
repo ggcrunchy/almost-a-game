@@ -1,0 +1,55 @@
+----------------------------
+-- Table with panel methods
+----------------------------
+DefineAssetType("Panel", {
+	--------------------------
+	-- Draws the panel
+	-- pp: Panel property set
+	-- x, y: Draw coordinates
+	-- w, h: Draw dimensions
+	--------------------------
+	Draw = function(pp, x, y, w, h)
+		GetAsset("Picture", "Panel"):Draw(x, y, w, h);
+	end,
+	
+	--------------------------------------
+	-- Runs a hit test on the panel
+	-- pp: Panel property set
+	-- cx, cy: Cursor coordinates
+	-- x, y: Panel coordinates
+	-- w, h: Panel dimensions
+	-- Returns: If true, the panel is hit
+	--------------------------------------
+	Hit = function(pp, cx, cy, x, y, w, h)
+		return PointInBox(cx, cy, x, y, w, h);
+	end,
+	
+	--------------------------------------
+	-- Configures the panel as the choice
+	-- pp: Panel property set
+	-- x, y: Cursor coordinates
+	-- bPress: Press state
+	--------------------------------------
+	Choose = function(pp, x, y, bPress)
+	end,
+	
+	-------------------------------------------------------
+	-- Performs upkeep on the panel
+	-- pp: Panel property set
+	-- x, y: Cursor coordinates
+	-- bPress: Press state
+	-- bHit: If true, the panel is hit
+	-- Returns: If true, the panel is no longer the choice
+	-------------------------------------------------------
+	Upkeep = function(pp, x, y, bPress, bHit)
+		return not bHit;
+	end
+},
+
+-- New
+-- pp: Panel property set
+-- x, y: Panel coordinates
+-- w, h: Panel dimensions
+---------------------------
+function(pp, x, y, w, h)
+end, "Widget");

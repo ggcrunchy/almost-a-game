@@ -1,0 +1,42 @@
+----------------------------
+-- Table with heart methods
+----------------------------
+DefineAssetType("Heart", {
+	--------------------------
+	-- Draws the heart
+	-- hp: Heart property set
+	--------------------------
+	Draw = function(hp)
+		if Get("Player"):GetHP() >= hp.count then
+			-- Get size of blocks.
+			local level = Get("Level");
+			local w, h = 1 / level:GetField("columns"), 1 / level:GetField("rows");
+			
+			-- Get the current frame and draw the heart.
+			local frame = hp.animation:GetFrame():Draw(hp.count * w, h, w, h);
+		end
+	end,
+	
+	----------------------------
+	-- Updates the heart
+	-- hp: Heart property set
+	----------------------------
+	Update = function(hp)
+
+	end
+},
+
+-- New
+-- hp: Heart property set
+-- w, h: Heart dimensions
+-- count: Minimum number of hit points necessary to display
+------------------------------------------------------------
+function (hp, w, h, count)
+	hp.now, hp.dx, hp.dy, hp.count, hp.animation = Get("Time"), 0, 0, count, NewAsset("Animation", {
+		normal = { "Assets/Textures/Game/Items/Heart/HEART1_1x1.png", "Assets/Textures/Game/Items/Heart/HEART2_1x1.png" }
+	}, "normal");
+	hp.animation:PlayState("normal", 1, function(ap)
+		ap:ResetState();
+		return ap:GetFrame();
+	end);
+end, "Object");

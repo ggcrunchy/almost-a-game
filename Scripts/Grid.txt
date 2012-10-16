@@ -1,0 +1,119 @@
+---------------------------
+-- Table with grid methods
+---------------------------
+DefineAssetType("Grid", {
+	---------------------------
+	-- Draws the grid
+	-- gp: Grid property set
+	-- x, y: Draw coordinates
+	-- w, h: Draw dimensions
+	---------------------------
+	Draw = function(gp, x, y, w, h)
+		-- Draw all non-nil entries.
+		local dw, dh = w / gp.columns, h / gp.rows;
+		for column, row in gp:Iter() do
+			gp:draw(column, row, x + (column - 1) * dw, y + (row - 1) * dh, dw, dh);
+		end
+		
+		-- Render the grid itself.
+		Render.DrawGrid(x, y, w, h, 1, 1, 1, gp.columns - 1, gp.rows - 1);
+	end,
+	
+	-------------------------------------
+	-- Runs a hit test on the grid
+	-- gp: Grid property set
+	-- cx, cy: Cursor coordinates
+	-- x, y: Grid coordinates
+	-- w, h: Grid dimensions
+	-- Returns: If true, the grid is hit
+	-------------------------------------
+	Hit = function(gp, cx, cy, x, y, w, h)
+		return PointInBox(cx, cy, x, y, w, h);
+	end,
+	
+	-------------------------------------
+	-- Configures the grid as the choice
+	-- gp: Grid property set
+	-- x, y: Cursor coordinates
+	-- bPress: Press state
+	-------------------------------------
+	Choose = function(gp, x, y, bPress)
+		-- If there is a press, grab the grid and set the cell.
+		if bPress then
+			gp.bHeld = true;
+			local column, row = gp:Cell(x, y, gp:GetRect());
+			gp:set(column, row, gp:get(column, row));
+		end
+	end,
+	
+	------------------------------------------------------
+	-- Performs upkeep on the grid
+	-- gp: Grid property set
+	-- x, y: Cursor coordinates
+	-- bPress: Press state
+	-- bHit: If true, the grid is hit
+	-- Returns: If true, the grid is no longer the choice
+	------------------------------------------------------
+	Upkeep = function(gp, x, y, bPress, bHit)
+		-- If there is a hit and a press, grab the grid and set the cell.
+		if bHit and bPress then
+			gp.bHeld = true;
+			local column, row = gp:Cell(x, y, gp:GetRect());
+			gp:set(column, row, gp:get(column, row));
+		end
+
+		-- If the button is held, release it if there is no press.
+		if gp.bHeld and not bPress then
+			gp.bHeld = false;
+		end
+
+		-- If the grid is neither hit nor held, it is no longer the choice.
+		return not bHit and not gp.bHeld;
+	end,
+	
+	-----------------------------------------
+	-- Computes which grid cell a point hits
+	-- gp: Grid property set
+	-- cx, cy: Cursor coordinates
+	-- x, y: Grid coordinates
+	-- w, h: Grid dimensions
+	-- Returns: Column and row of cell
+	-----------------------------------------
+	Cell = function(gp, cx, cy, x, y, w, h)
+		if PointInBox(cx, cy, x, y, w, h) then
+			return math.floor(gp.columns * (cx - x) / w) + 1, math.floor(gp.rows * (cy - y) / h) + 1;
+		end
+	end,
+	
+	---------------------------------------------------
+	-- Builds an iterator over the valid cells
+	-- gp: Grid property set
+	-- Returns: Iterator which supplies column and row
+	---------------------------------------------------
+	Iter = function(gp)
+		return coroutine.wrap(function()
+			-- Iterate through the cells, returning non-nil entries.
+			for row = 1, gp.rows do
+				for column = 1, gp.columns do
+					if gp:get(column, row) ~= nil then
+						coroutine.yield(column, row);
+					end
+				end
+			end	
+		end);
+	end
+},
+
+-- New
+-- gp: Grid property set
+-- x, y: Grid coordinates
+-- w, h: Grid dimensions
+-- columns: Count of grid columns
+-- rows: Count of grid rows
+-- set: Method used to set a grid cell
+-- get: Method used to get a grid cell
+-- draw: Method used to draw a grid cell
+-----------------------------------------
+function(gp, x, y, w, h, columns, rows, set, get, draw)
+	gp.columns, gp.rows, gp.set, gp.get, gp.draw = columns, rows, set, get, draw;
+end, "Widget");

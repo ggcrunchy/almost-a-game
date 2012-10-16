@@ -1,0 +1,30 @@
+-- Install the text sets.
+CacheAsset("Text", "Small", "Assets/Fonts/Vera.ttf", 18, 255, 255, 255);
+
+-- Install the picture data.
+for key, folder in pairs{	
+	-------------
+	-- UI button
+	-------------
+	Button = "UI/",
+	ButtonOver = "UI/",
+	ButtonHeld = "UI/",
+	
+	--------------
+	-- UI editbox
+	--------------
+	Editbox = "UI/",
+	
+	------------
+	-- UI panel
+	------------
+	Panel = "UI/"
+} do
+	CacheAsset("Picture", key);
+	local picture = GetAsset("Picture", key);
+	picture:Prime("Multi");
+	local grid, prefix = picture:GetGrid(), "Assets/Textures/" .. folder .. key .. "_";
+	for index, suffix in ipairs{ "TL", "T", "TR", "L", "M", "R", "BL", "B", "BR" } do
+		grid[index]:LoadPicture(prefix .. suffix .. ".png", 0, 0, 1, 1);
+	end
+end

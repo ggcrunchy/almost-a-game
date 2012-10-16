@@ -1,0 +1,135 @@
+------------
+-- UI table
+------------
+local _UI = { layers = {} };
+
+------------------------
+-- LoadUI
+-- Loads the UI chain
+-- chain: Chain to load
+------------------------
+function LoadUI (chain)
+	_UI.layers = {};
+	PopupUI(chain);
+end
+
+-----------------------------
+-- PopupUI
+-- Loads a popup into the UI
+-- chain: Chain to load
+-----------------------------
+function PopupUI (chain)
+	-- Build the focus chain. Start at the front.
+	local chain, focus = chain or {}, {};
+	for _, widget in ipairs(chain) do
+		if widget.Trap then
+			table.insert(focus, widget);
+		end
+	end
+	
+	-- Put the layer into the UI.
+	table.insert(_UI.layers, { chain = chain, focus = focus, focusitem = 1 });
+end
+
+-------------------------------
+-- ClosePopupUI
+-- Removes a popup from the UI
+-------------------------------
+function ClosePopupUI ()
+	table.remove(_UI.layers);
+end
+
+----------------------------
+-- SendEventUI
+-- Sends an event to the UI
+-- type: Event prefix
+-- event: Event to send
+----------------------------
+function SendEventUI (type, event)
+	local layer = table.top(_UI.layers);
+	local focus = layer.focus[layer.focusitem];
+	if focus then
+		focus:Trap(type, event);
+	end
+end
+
+---------------------------
+-- AdvanceFocusUI
+-- Advances the focus item
+---------------------------
+function AdvanceFocusUI ()
+	local layer = table.top(_UI.layers);
+	layer.focusitem = layer.focusitem + 1;
+	if layer.focusitem > table.getn(layer.focus) then
+		layer.focusitem = 1;
+	end
+end
+
+------------------------------------------------
+-- IsFocusUI
+-- Indicates whether a widget is the focus item
+-- wp: Widget property set
+-- Returns: If true, widget is the focus item
+------------------------------------------------
+function IsFocusUI (wp)
+	local layer = table.top(_UI.layers);
+	return layer.focus[layer.focusitem] == wp;
+end
+
+-----------------------------------
+-- PropagateUI
+-- Propagates input through the UI
+-- x, y: Cursor coordinates
+-- bPress: Press state
+-----------------------------------
+function PropagateUI (x, y, bPress)
+	-- If there is no choice, but there was a press before, the "null widget" is held and
+	-- there is no way to interact with the UI. Otherwise, run through the widgets in
+	-- reverse drawing order, stopping if a hit is found.
+	if not _UI.bWasPressed or _UI.choice then
+		--------------------------------
+		-- FindHit
+		-- Finds the hit widget, if any
+		-- Returns: Widget property set
+		--------------------------------
+		local function FindHit ()
+			local layer = table.top(_UI.layers);
+			for _, widget in ipairs_r(layer.chain) do
+				if widget:Hit(x, y, widget:GetRect()) then
+					return widget;
+				end
+			end		
+		end
+		
+		-- Check for a hit.
+		local hit = FindHit();
+		
+		-- If there is a choice, perform upkeep on it; this may nullify it.
+		if _UI.choice then
+			if _UI.choice:Upkeep(x, y, bPress, hit == _UI.choice) then
+				_UI.choice = nil;
+			end
+		end
+		
+		-- If there is a hit but no choice, choose the hit.
+		if hit and not _UI.choice then
+			_UI.choice = hit;
+			hit:Choose(x, y, bPress);
+		end
+	end
+	
+	-- Make a memo of the press for the next propagation.
+	_UI.bWasPressed = bPress;
+end
+
+----------------
+-- DrawUI
+-- Draws the UI
+----------------
+function DrawUI ()
+	for _, layer in ipairs(_UI.layers) do
+		for _, widget in ipairs(layer.chain) do
+			widget:Draw(widget:GetRect());
+		end
+	end
+end

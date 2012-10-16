@@ -1,0 +1,77 @@
+----------------------------------
+-- SpawnPointScreen
+-- Goes to the spawn point screen
+----------------------------------
+function SpawnPointScreen ()
+	----------------------------------
+	-- SpawnPointEdit
+	-- spawnpoint: Data table
+	-- Loads a spawn point edit popup
+	----------------------------------
+	local function SpawnPointEdit (spawnpoint)
+		local static, params = Widgets("Static", Column(.05, .025, .1, .15, .1)), {};
+		local editbox = Widgets("Editbox", Column(.05, .175, .1, .375, .1), params);
+		PopupUI{
+			------------
+			-- Backdrop
+			------------
+			NewAsset("Panel", 0, 0, .6, .5),
+			
+			----------------
+			-- Set property
+			----------------
+			NewAsset("Button", .05, .35, .1, .1, function()
+				spawnpoint.name, spawnpoint.more = params[1]:GetText(), params[2]:GetText();
+				ClosePopupUI();
+			end, "OK"),
+			
+			--------------
+			-- Properties
+			--------------
+			static("Name", false),
+			editbox(FilterString(10, true), spawnpoint.name),
+			static("More", false),
+			editbox(FilterString(10, true), spawnpoint.more)
+		};
+	end
+	
+	-- Load the common core.
+	local spawndata = { name = "", more = "" };
+	local checkboxes, level = Widgets("Checkbox", Column(.025, .175, .85, .05, .05)), Get("Level");
+	local set = checkboxes(false);
+	local get = checkboxes(false);
+	local data = EditorCore(
+		function(gp, column, row, current)
+			if get:GetCheck() then
+				if current then
+					SpawnPointEdit(current);
+				end
+			else
+				level:SetCell("spawnpoint", column, row, set:GetCheck() and table.copy(spawndata) or nil, true);
+			end
+		end,
+		function(gp, column, row)
+			return level:GetCell("spawnpoint", column, row, true);
+		end,
+		function(gp, column, row, x, y, w, h)
+			GetAsset("Text", "Small"):DrawString("X", "cx cy", x, y, w, h);
+		end,
+		CollisionScreen, TileScreen
+	);
+	
+	-- Load the spawnpoint selection.
+	local static = Widgets("Static", Column(.025, .225, .85, .15, .05));
+	table.insert(data, static("Set Cell", false));
+	table.insert(data, set);
+	table.insert(data, static("Get Cell", false));
+	table.insert(data, get);
+	table.insert(data, NewAsset("Button", .05, .85, .1, .125, function()
+		SpawnPointEdit(spawndata);
+	end, "Edit"));
+	
+	-- Install the spawn point table.
+	LoadUI(data);
+	
+	-- Indicate that the spawn point screen is current.
+	Set("Title", "Spawn Points");
+end

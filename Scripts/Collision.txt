@@ -1,0 +1,30 @@
+--------------------------------
+-- CollisionScreen
+-- Goes to the collision screen
+--------------------------------
+function CollisionScreen ()
+	-- Load the common core.
+	local check, level = NewAsset("Checkbox", .05, .85, .1, .125, false), Get("Level");
+	local data = EditorCore(
+		function(gp, column, row, current)
+			level:SetCell("collision", column, row, check:GetCheck() and true or nil, true);
+		end,
+		function(gp, column, row)
+			return level:GetCell("collision", column, row, true);
+		end,
+		function(gp, column, row, x, y, w, h)
+			GetAsset("Text", "Small"):DrawString("X", "cx cy", x, y, w, h);
+		end,
+		TriggerScreen, SpawnPointScreen
+	);
+	
+	-- Load the collision selection.
+	table.insert(data, check);
+	table.insert(data, NewAsset("Static", .175, .8875, .1, .05, "Collide", false));
+	
+	-- Install the collision table.
+	LoadUI(data);
+	
+	-- Indicate that the collision screen is current.
+	Set("Title", "Collision");
+end

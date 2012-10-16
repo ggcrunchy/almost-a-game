@@ -1,0 +1,19 @@
+---------------------
+-- Key binding table
+---------------------
+local _Binding = {
+	[SDL.K_LEFT] = "left", [SDL.K_a] = "left",
+	[SDL.K_RIGHT] = "right", [SDL.K_d] = "right",
+	[SDL.K_UP] = "jump", [SDL.K_w] = "jump",
+	[SDL.K_SPACE] = "stab"
+};
+
+------------------------------------
+-- GetKeyBinding
+-- Gets the binding for a given key
+-- key: Keysym
+-- Returns: Binding for the key
+------------------------------------
+function GetKeyBinding (key)
+	return _Binding[key];
+end

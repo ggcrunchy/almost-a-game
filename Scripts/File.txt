@@ -1,0 +1,17 @@
+--------------------------------------------
+-- ScanFolder
+-- Builds an iterator over a folder
+-- folder: Folder name
+-- Returns: Iterator which returns filename
+--------------------------------------------
+function ScanFolder (folder)
+	return function (directory, _)
+		if directory then
+			local entry = dirent.read(directory);
+			if entry then
+				return entry.d_name;
+			end
+			dirent.close(directory);
+		end
+	end, dirent.open(folder), nil;
+end

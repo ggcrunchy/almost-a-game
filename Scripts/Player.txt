@@ -1,0 +1,235 @@
+-----------------------------
+-- Table with player methods
+-----------------------------
+DefineAssetType("Player", {
+	------------------------------------
+	-- Sends an event to the player
+	-- pp: Player property set
+	-- event: Event to receive
+	-- bSet: If true, the event was set
+	------------------------------------
+	SendEvent = function(pp, event, bSet)
+		if event == "left" or event == "right" then
+			pp:Turn(event, bSet);
+		elseif event == "jump" then
+			if bSet and pp.jumps < 2 then
+				pp:Jump();
+			end
+		elseif event == "stab" then
+			if bSet and pp.state ~= "stab" then
+				pp:Stab();
+			end
+		end
+	end,
+	
+	---------------------------------------
+	-- Damages the player
+	-- pp: Player property set
+	-- damage: Amount of damage to inflict
+	---------------------------------------
+	Damage = function(pp, damage)
+		if damage > 0 and not pp.hurtwhen then
+			pp.hp, pp.hurtwhen = pp.hp - damage, Get("Time");
+			if pp.hp <= 0 then
+				GameOver();
+			end
+		end
+	end,
+	
+	--------------------------------
+	-- Gets the player's hit points
+	-- pp: Player property set
+	-- Returns: Player hit points
+	--------------------------------
+	GetHP = function(pp)
+		return pp.hp;
+	end,
+	
+	-----------------------------------------------
+	-- Indicates whether the player is facing left
+	-- pp: Player property set
+	-- Returns: If true, player is facing left
+	-----------------------------------------------
+	FacingLeft = function(pp)
+		return pp.bLeft;
+	end,
+	
+	----------------------------------
+	-- Turns the player
+	-- pp: Player property set
+	-- direction: Direction of turn
+	-- bGo: If true, player is moving
+	----------------------------------
+	Turn = function(pp, direction, bGo)
+		if direction == "left" then
+			pp.bLeft, pp.dx = true, bGo and -3.5 or 0;
+		else
+			pp.bLeft, pp.dx = false, bGo and 3.5 or 0;	
+		end
+	end,
+
+	---------------------------
+	-- Triggers a player jump
+	-- pp: Player property set
+	---------------------------
+	Jump = function(pp)
+		--
+		pp.jumps, pp.dy, pp.state = pp.jumps + 1, -10, "jump";
+		GetAsset("Animation", "Player"):PlayState("jump", .5, function(ap)
+			ap:LockFrame("jump", 5);
+			return ap:GetFrame();
+		end);
+	end,
+	
+	---------------------------
+	-- Land after a jump
+	-- pp: Player property set
+	---------------------------
+	Land = function(pp)
+		pp.jumps, pp.state = 0, "idle";
+		GetAsset("Animation", "Player"):LockFrame("idle", 1);
+	end,
+	
+	---------------------------
+	-- Begin player fall
+	-- pp: Player property set
+	---------------------------
+	Fall = function(pp)
+		pp.state = "fall";
+		GetAsset("Animation", "Player"):PlayState("fall", .5, function(ap)
+			ap:LockFrame("fall", 8);
+			return ap:GetFrame();
+		end);	
+	end,
+	
+	---------------------------
+	-- Perform a player stab
+	-- pp: Player property set
+	---------------------------
+	Stab = function(pp)
+		Get("Weapon"):SetActive(true);
+		local oldstate = pp.state;
+		pp.state, pp.dx, pp.stabwhen = "stab", 0, Get("Time");
+		GetAsset("Animation", "Player"):PlayState("stab", .4, function(ap)
+			if oldstate == "fall" then
+				pp:Fall();
+			else
+				pp.state = "idle";
+				GetAsset("Animation", "Player"):LockFrame("idle", 1);
+			end
+			return ap:GetFrame();
+		end);
+	end,
+		
+	---------------------------
+	-- Draws the player
+	-- pp: Player property set
+	---------------------------
+	Draw = function(pp)
+		-- Get size of blocks.
+		local level = Get("Level");
+		local w, h = 1 / level:GetField("columns"), 1 / level:GetField("rows");
+		
+		-- Get the current frame and draw the player. Flip the player if facing left.
+		local x1, y1, x2, y2 = pp:GetBounds(true);
+		local frame = GetAsset("Animation", "Player"):GetFrame();
+		frame:Flip(pp.bLeft, false);
+		frame:Draw(x1 * w, y1 * h, (x2 - x1) * w, (y2 - y1) * h);
+		frame:Flip(pp.bLeft, false);
+	end,
+	
+	---------------------------
+	-- Updates the player
+	-- pp: Player property set
+	---------------------------
+	Update = function(pp)
+		--
+		local lapse = (Get("Time") - pp.now) / 1000;
+		pp.now = Get("Time");
+		local dx, dy = pp:Move(lapse * pp.dx, lapse * pp.dy);
+		
+		--
+		if pp.state == "idle" and pp.dx ~= 0 then
+			pp.state = "walk";
+			GetAsset("Animation", "Player"):PlayState("walk", 1, function(ap)
+				ap:ResetState();
+				return ap:GetFrame();
+			end);
+		elseif pp.state == "walk" and pp.dx == 0 then
+			pp.state = "idle";
+			GetAsset("Animation", "Player"):LockFrame("idle", 1);
+		end		
+		
+		--
+		local level, x1, y1, x2, y2 = Get("Level"), pp:GetBounds(true);
+		local columns, rows = level:GetField("columns"), level:GetField("rows");
+		if pp.dx > 0 then
+			if x1 > .7 * columns and CanScroll("right") then
+				level:Scroll(math.min(x1 - .7 * columns, .025 * columns), 0);
+			end
+		elseif pp.dx < 0 then
+			if x2 < .3 * columns and CanScroll("left") then
+				level:Scroll(math.max(x2 - .3 * columns, -.025 * columns), 0);
+			end
+		end
+		if pp.dy > 0 then
+			if y1 > .3 * rows and CanScroll("down") then
+				level:Scroll(0, math.min(y1 - .3 * rows, .025 * rows));
+			end
+			
+			-- 
+			if dy > 0 and (pp.state == "idle" or pp.state == "walk") then
+				pp:Fall();
+				
+			-- If the player stopped short while falling, it landed.
+			elseif dy < lapse * pp.dy and pp.state == "fall" then
+				pp:Land(); 
+			end
+		elseif pp.dy < 0 then
+			if y2 < .7 * rows and CanScroll("up") then
+				level:Scroll(0, math.max(y2 - .7 * rows, .025 * rows));
+			end
+			
+			-- If the player stopped short while rising up, fall back down.
+			if dy > lapse * pp.dy then
+				pp:Fall();
+			end
+		end
+		
+		--
+		local olddy = pp.dy;
+		pp.dy = math.min(pp.dy + .1, 3);
+		if olddy < 0 and pp.dy > 0 then
+			pp:Fall();
+		end
+		
+		--
+		if pp.stabwhen and Get("Time") - pp.stabwhen > 400 then
+			Get("Weapon"):SetActive(false);
+			pp.stabwhen = nil;
+		end
+		
+		--
+		if pp.hurtwhen and Get("Time") - pp.hurtwhen  > 1500 then
+			pp.hurtwhen = nil;
+		end
+	end
+},
+
+-- New
+-- pp: Player property set
+-- w, h: Player dimensions
+-- hp: Hit points
+---------------------------
+function (pp, w, h, hp)
+	pp.jumps, pp.now, pp.dx, pp.dy, pp.state, pp.hp = 0, Get("Time"), 0, 3, "idle", hp;
+end, "Object");
+
+-- Load the player animations.
+CacheAsset("Animation", "Player", {
+	idle = { "Assets/Textures/Game/Player/Stand/bandido parado.png" },
+	walk = { "Assets/Textures/Game/Player/Walk/bandido0008.png", "Assets/Textures/Game/Player/Walk/bandido0009.png", "Assets/Textures/Game/Player/Walk/bandido0010.png", "Assets/Textures/Game/Player/Walk/bandido0011.png" },
+	jump = { "Assets/Textures/Game/Player/Jump/bandido saltando1.png", "Assets/Textures/Game/Player/Jump/bandido saltando2.png", "Assets/Textures/Game/Player/Jump/bandido saltando3.png", "Assets/Textures/Game/Player/Jump/bandido saltando4.png", "Assets/Textures/Game/Player/Jump/bandido saltando5.png" },
+	fall = { "Assets/Textures/Game/Player/Fall/bandido caiendo1.png", "Assets/Textures/Game/Player/Fall/bandido caiendo2.png", "Assets/Textures/Game/Player/Fall/bandido caiendo3.png", "Assets/Textures/Game/Player/Fall/bandido caiendo4.png", "Assets/Textures/Game/Player/Fall/bandido caiendo5.png", "Assets/Textures/Game/Player/Fall/bandido caiendo6.png", "Assets/Textures/Game/Player/Fall/bandido caiendo7.png", "Assets/Textures/Game/Player/Fall/bandido caiendo8.png", "Assets/Textures/Game/Player/Fall/bandido caiendo9.png" },
+	stab = { "Assets/Textures/Game/Player/Stab/bandido cuchillando0027.png", "Assets/Textures/Game/Player/Stab/bandido cuchillando0028.png", "Assets/Textures/Game/Player/Stab/bandido cuchillando0029.png", "Assets/Textures/Game/Player/Stab/bandido cuchillando0030.png", "Assets/Textures/Game/Player/Stab/bandido cuchillando0031.png",  }
+}, "idle");

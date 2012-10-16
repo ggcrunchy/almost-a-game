@@ -1,0 +1,68 @@
+------------------------------
+-- Table with octopus methods
+------------------------------
+DefineAssetType("Octopus", {
+	---------------------------------------
+	-- Damages the octopus
+	-- op: Octopus property set
+	-- damage: Amount of damage to inflict
+	---------------------------------------
+	Damage = function(op, damage)
+		if damage > 0 and not op.hurtwhen then
+			op.hp, op.hurtwhen = op.hp - damage, Get("Time");
+		end
+	end,
+	
+	-----------------------------
+	-- Gets the octopus's damage
+	-- op: Octopus property set
+	-- Returns: Damage amount
+	-----------------------------
+	GetDamage = function(op)
+		-- Octopi only deal damage when alive.
+		return op.hp > 0 and op.damage or 0;
+	end,
+		
+	----------------------------
+	-- Draws the octopus
+	-- op: Octopus property set
+	----------------------------
+	Draw = function(op)
+		if op.hp > 0 then
+			-- Get size of blocks.
+			local level = Get("Level");
+			local w, h = 1 / level:GetField("columns"), 1 / level:GetField("rows");
+			
+			-- Get the current frame and draw the octopus.
+			local x1, y1, x2, y2 = op:GetBounds(true);
+			op.animation:GetFrame():Draw(x1 * w, y1 * h, (x2 - x1) * w, (y2 - y1) * h);
+		end
+	end,
+	
+	----------------------------
+	-- Updates the octopus
+	-- op: Octopus property set
+	----------------------------
+	Update = function(op)
+		--
+		if op.hurtwhen and Get("Time") - op.hurtwhen > 500 then
+			op.hurtwhen = nil;
+		end
+	end
+},
+
+-- New
+-- op: Octopus property set
+-- w, h: Octopus dimensions
+-- hp: Hit points
+-- damage: Damage to deal
+----------------------------
+function (op, w, h, hp, damage)
+	op.now, op.dx, op.dy, op.state, op.hp, op.damage, op.animation = Get("Time"), 0, 0, "idle", hp, damage, NewAsset("Animation", {
+		normal = { "Assets/Textures/Game/Enemy/Octopus/pulpo0000.png", "Assets/Textures/Game/Enemy/Octopus/pulpo0001.png", "Assets/Textures/Game/Enemy/Octopus/pulpo0002.png", "Assets/Textures/Game/Enemy/Octopus/pulpo0003.png", "Assets/Textures/Game/Enemy/Octopus/pulpo0004.png", "Assets/Textures/Game/Enemy/Octopus/pulpo0005.png", "Assets/Textures/Game/Enemy/Octopus/pulpo0006.png", "Assets/Textures/Game/Enemy/Octopus/pulpo0007.png", "Assets/Textures/Game/Enemy/Octopus/pulpo0008.png", "Assets/Textures/Game/Enemy/Octopus/pulpo0009.png", "Assets/Textures/Game/Enemy/Octopus/pulpo0010.png", "Assets/Textures/Game/Enemy/Octopus/pulpo0011.png", "Assets/Textures/Game/Enemy/Octopus/pulpo0012.png", "Assets/Textures/Game/Enemy/Octopus/pulpo0013.png", "Assets/Textures/Game/Enemy/Octopus/pulpo0014.png" }
+	}, "normal");
+	op.animation:PlayState("normal", 2, function(ap)
+		ap:ResetState();
+		return ap:GetFrame();
+	end);
+end, "Object");

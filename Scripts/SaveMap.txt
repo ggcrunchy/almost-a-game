@@ -1,0 +1,106 @@
+----------------------
+-- Save routine table
+----------------------
+local _Save = {
+	------------------
+	-- Collision save
+	------------------
+	collision = function(fp)
+		for x, y, _ in Get("Level"):Iter("collision") do
+			fp:write(string.format('level:SetCell("collision", %i, %i, true, true);\n', x, y));
+		end
+	end,
+	
+	--------------------
+	-- Spawn point save
+	--------------------
+	spawnpoint = function(fp)
+		for x, y, spawnpoint in Get("Level"):Iter("spawnpoint") do
+			fp:write(string.format('level:SetCell("spawnpoint", %i, %i, {\n', x, y));
+			fp:write('\tname = "' .. spawnpoint.name .. '",\n');
+			fp:write('\tmore = "' .. spawnpoint.more .. '"\n');
+			fp:write('}, true);\n');
+		end
+	end,
+	
+	-------------
+	-- Tile save
+	-------------
+	tile = function(fp)
+		fp:write('for _, value in ipairs{\n');
+		for x, y, tile in Get("Level"):Iter("tile") do
+			if tile:Type() == "Basic" then
+				fp:write(string.format('\t{ x = %i, y = %i, file = "%s" },\n', x, y, tile:GetFile()));
+			end
+		end
+		fp:write('} do\n');
+		fp:write('\tpicture = NewAsset("Picture");\n');
+		fp:write('\tpicture:LoadPicture(value.file, 0, 0, 1, 1);\n');
+		fp:write('\tlevel:SetCell("tile", value.x, value.y, picture, true);\n');
+		fp:write('end;\n');
+	end,
+	
+	----------------
+	-- Trigger save
+	----------------
+	trigger = function(fp)
+		for x, y, trigger in Get("Level"):Iter("trigger") do
+			fp:write(string.format('level:SetCell("trigger", %i, %i, %s, true);\n', x, y, trigger));
+		end
+	end
+};
+
+----------------------------
+-- SaveMapDialog
+-- Builds a map save dialog
+----------------------------
+function SaveMapDialog ()
+	local button = Widgets("Button", Row(.025, .05, .35, .125, .1));
+	local filename = NewAsset("Editbox", .2, .1, .3, .1, FilterString(10, false), "");
+	PopupUI{
+		------------
+		-- Backdrop
+		------------
+		NewAsset("Panel", 0, 0, .6, .5),
+		
+		-------------
+		-- File name
+		-------------
+		NewAsset("Static", .025, .1, .15, .1, "File Name", false),
+		filename,
+		
+		---------------
+		-- Save/Cancel
+		---------------
+		button(function()
+			-- Open the save file.
+			if filename:GetText() ~= "" then
+				local fp = io.open("Levels/" .. filename:GetText() .. ".lvl", "w");
+				if fp then
+					local level = Get("Level");
+					
+					-- Load the script header.
+					local w, h, columns, rows = level:GetField("w"), level:GetField("h"), level:GetField("columns"), level:GetField("rows");
+					local fields = string.format("%i, %i, %i, %i,", w / columns, h / rows, columns, rows);		
+					fp:write('local level = NewAsset("Level", ' .. fields .. ' "collision", "spawnpoint", "tile", "trigger");\n');
+					fp:write('Set("Level", level);\n');
+					
+					-- Save the level tables.
+					for key, save in pairs(_Save) do
+						save(fp);
+					end
+					
+					-- Close the file.
+					fp:close();
+						
+					-- Indicate that no changes are unsaved.
+					Set("Save", false);
+					
+					-- Close the prompt.
+					ClosePopupUI();
+				end
+			end
+		end, "Save"),
+		button(ClosePopupUI, "Cancel")
+	};
+end

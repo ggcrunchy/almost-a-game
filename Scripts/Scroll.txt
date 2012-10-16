@@ -1,0 +1,58 @@
+----------------
+-- Scroll table
+----------------
+local _Scroll = { up = {}, down = {}, left = {}, right = {} };
+
+---------------------------------------------------------------
+-- CanScroll
+-- Indicates whether scrolling is allowed in a given direction
+-- direction: Direction to attempt scroll in
+-- where: Position on screen in given direction
+-- Returns: If true, scrolling is permitted
+---------------------------------------------------------------
+function CanScroll (direction, where)
+	----------------------------------------------------------------------------------
+	-- GetScrollLimits
+	-- Returns some limit properties
+	-- properties: Direction in which values decrease, coordinate and dimension names
+	-- Returns: Scroll limit indicator, behavior with respect to limit
+	----------------------------------------------------------------------------------
+	local function GetScrollLimits (properties)
+		local level, lesser, coordinate, screendim, dim = Get("Level"), unpack(properties);
+		if direction == lesser then
+			return level:GetField(coordinate) <= 0, true;
+		else
+			return level:GetField(coordinate) + level:GetField(screendim) >= level:GetField(dim), false;
+		end	
+	end
+	
+	-- Trivially fail if the scroll is disabled.
+	if _Scroll[direction].bDisable then
+		return false;
+	end
+	
+	-- Fail if the level is already scrolled to the limit.
+	local bVertical = direction == "up" or direction == "down";
+	local limit, bLess = GetScrollLimits(bVertical and { "up", "y", "rows", "h" } or { "left", "x", "columns", "w" });
+	if limit then
+		return false;
+	end
+	
+	-- Fail if the position is not far enough along the screen.
+	if not _Scroll[direction].limit then
+		return true;
+	end
+	local result = where <= _Scroll[direction].limit;
+	return bLess and result or not result;
+end
+
+---------------------------------------------
+-- SetScrollField
+-- Sets a given scroll direction's field
+-- direction: Direction to assign
+-- field: Direction field to assign
+-- value: Value to assign to direction field
+---------------------------------------------
+function SetScrollField (direction, field, value)
+	_Scroll[direction][field] = value;
+end

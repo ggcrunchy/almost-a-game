@@ -1,0 +1,78 @@
+----------------------------
+-- Table with image methods
+----------------------------
+DefineAssetType("Image", {
+	--------------------------
+	-- Draws the image
+	-- ip: Image property set
+	-- x, y: Draw coordinates
+	-- w, h: Draw dimensions
+	--------------------------
+	Draw = function(ip, x, y, w, h)
+		if ip.picture then
+			ip.picture:Draw(x, y, w, h);
+		end
+		Render.DrawBox(x, y, w, h, 1, 1, 1);
+	end,
+	
+	--------------------------------------
+	-- Runs a hit test on the image
+	-- ip: Image property set
+	-- cx, cy: Cursor coordinates
+	-- x, y: Image coordinates
+	-- w, h: Image dimensions
+	-- Returns: If true, the image is hit
+	--------------------------------------
+	Hit = function(ip, cx, cy, x, y, w, h)
+	end,
+	
+	--------------------------------------
+	-- Configures the image as the choice
+	-- ip: Image property set
+	-- x, y: Cursor coordinates
+	-- bPress: Press state
+	--------------------------------------
+	Choose = function(ip, x, y, bPress)
+	end,
+	
+	-------------------------------------------------------
+	-- Performs upkeep on the image
+	-- ip: Image property set
+	-- x, y: Cursor coordinates
+	-- bPress: Press state
+	-- bHit: If true, the image is hit
+	-- Returns: If true, the image is no longer the choice
+	-------------------------------------------------------
+	Upkeep = function(ip, x, y, bPress, bHit)
+		-- If the image is not hit, it is no longer the choice.
+		return not bHit;
+	end,
+	
+	------------------------------
+	-- Assigns the image picture
+	-- ip: Image property set
+	-- picture: Picture to assign
+	------------------------------
+	SetPicture = function(ip, picture)
+		ip.picture = picture;
+	end,
+	
+	-----------------------------
+	-- Obtains the image picture
+	-- ip: Image property set
+	-- Returns: Image picture
+	-----------------------------
+	GetPicture = function(ip)
+		return ip.picture;
+	end
+},
+
+-- New
+-- ip: Image property set
+-- x, y: Image coordinates
+-- w, h: Image dimensions
+-- picture: Image picture
+---------------------------
+function(ip, x, y, w, h, picture)
+	ip.picture = picture;
+end, "Widget");

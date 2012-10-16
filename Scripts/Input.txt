@@ -1,0 +1,115 @@
+-----------------------
+-- Task and key tables
+-----------------------
+local _Task, _Key = {}, {};
+
+-----------------------------------------
+-- RunTraps
+-- Runs pending events through any traps
+-----------------------------------------
+local function RunTraps ()
+	------------------------
+	-- Trap
+	-- Traps events
+	-- type: Event prefix
+	-- event: Event to trap
+	------------------------
+	local function Trap (type, event)
+		-- If a trap exists, run it on the event.
+		local trap = Get("Trap");
+		if trap then
+			trap(type, event);
+		end	
+	end
+	
+	-- Process all relevant events.
+	while SDL.PollEvent(SDL.Event_get()) ~= 0 do
+		local type = SDL.Event_get().type;
+		
+		-- Check for key-related events.
+		if type == SDL.KEYDOWN or type == SDL.KEYUP then
+			local key = SDL.Event_get().key.keysym;
+			
+			-- Update the key's press state.
+			_Key[key.sym] = type == SDL.KEYDOWN;
+			
+			-- Trap the key event.
+			Trap("Key", key);
+
+		-- Check for the quit event.
+		elseif type == SDL.QUIT then
+			Set("Quit", true);
+		end
+	end
+end
+
+------------------------------
+-- RunTasks
+-- Performs all pending tasks
+------------------------------
+local function RunTasks ()
+	-- Iterate until only persistent tasks remain.
+	local persist, sleep = 0, {};
+	while persist ~= table.getn(_Task) do
+		-- Create an empty cache for this pass, and store the task list. The current task
+		-- list is emptied, allowing it to be filled during this run.
+		local cache, live = {}, _Task;
+		_Task = {};
+
+		-- Invoke all live tasks; ignore sleeping tasks. If a task is to be kept, increment
+		-- the persistent task count and put it to sleep.
+		for _, task in ipairs(live) do
+			if not sleep[task] and task() then
+				persist = persist + 1;
+				sleep[task] = true;
+			end
+			
+			-- Keep sleeping tasks alive.
+			if sleep[task] then
+				table.insert(cache, task);
+			end
+		end
+		
+		-- Put any new tasks into the cache. Replace the task list with the cache.
+		for _, task in ipairs(_Task) do
+			table.insert(cache, task);
+		end
+		_Task = cache;
+	end
+end
+
+------------------------------------
+-- AddTask
+-- Adds a new task to the task list
+-- task: Task to add
+------------------------------------
+function AddTask (task)
+	table.insert(_Task, task);
+end
+
+---------------------------------
+-- GetKeyState
+-- Gets a key's current state
+-- key: Keysym
+-- Returns: If true, key is down
+---------------------------------
+function GetKeyState (key)
+	return _Key[key];
+end
+
+------------------------------------
+-- UpdateInput
+-- Updates the editor's input state
+------------------------------------
+function UpdateInput ()
+	-- Trap pending events.
+	RunTraps();
+	
+	-- Get the current mouse state and update the cursor. Propate these through the UI.
+	local buttons, x, y = SDL.GetMouseState(0, 0);
+	local w, h = Render.GetVideoSize();
+	PropagateUI(x / w, y / h, Misc.Test(buttons, SDL.BUTTON_LMASK));
+	
+	-- Process tasks.
+	RunTasks();
+end

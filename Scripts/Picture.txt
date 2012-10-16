@@ -1,0 +1,220 @@
+------------------------------
+-- Table with picture methods
+------------------------------
+DefineAssetType("Picture", {
+	---------------------------------------
+	-- Loads the picture data
+	-- pp: Picture property set
+	-- file: Image file
+	-- s1, t1, s2, t2: Picture texels
+	-- Returns: If true, picture is loaded
+	---------------------------------------
+	LoadPicture = function(pp, file, s1, t1, s2, t2)
+		-- Attempt to load the picture.
+		local picture = Render.LoadPicture(file, s1, t1, s2, t2);
+		if picture then
+			pp.file, pp.picture = file, picture;
+			return true;
+		end
+	end,
+	
+	-----------------------------------
+	-- Primes pictures of a given type
+	-- pp: Picture property set
+	-- type: Picture type to prime
+	-----------------------------------
+	Prime = function(pp, type)
+		pp.file = "";
+		if type == "Basic" then
+			pp.picture = nil;
+		else
+			pp.picture = { wt = 1 / 3, ht = 1 / 3 };
+			for _ = 1, 9 do
+				table.insert(pp.picture, NewAsset("Picture"));
+			end		
+		end
+	end,
+	
+	-------------------------------------------
+	-- Flips a picture
+	-- pp: Picture property set
+	-- bHorizontal: If true, flip horizontally
+	-- bVertical: If true, flip vertically
+	-------------------------------------------
+	Flip = function(pp, bHorizontal, bVertical)
+		if pp:Type() == "Basic" then
+			-- If the picture is available, flip it as requested.
+			if pp.picture then
+				local s1, t1, s2, t2 = pp:GetTexels();
+				if bHorizontal then
+					s1, s2 = s2, s1;
+				end
+				if bVertical then
+					t1, t2 = t2, t1;
+				end
+				pp:SetTexels(s1, t1, s2, t2);
+			end
+		else
+			-- Flip each grid picture.
+			for index = 1, 9 do
+				pp.picture[index]:Flip(bHorizontal, bVertical);
+			end	
+			
+			-- If flipping horizontally, exchange the left and right column.
+			if bHorizontal then
+				for index = 1, 7, 3 do
+					pp.picture[index], pp.picture[index + 2] = pp.picture[index + 2], pp.picture[index];
+				end
+			end
+			
+			-- If flipping vertically, exchange the top and bottom row.
+			if bVertical then
+				for index = 1, 3 do
+					pp.picture[index], pp.picture[index + 6] = pp.picture[index + 6], pp.picture[index];
+				end
+			end
+		end
+	end,
+	
+	----------------------------
+	-- Gets the picture grid
+	-- pp: Picture property set
+	-- Returns: Picture grid
+	----------------------------
+	GetGrid = function(pp)
+		return pp.picture;
+	end,
+	
+	----------------------------
+	-- Gets the picture file
+	-- pp: Picture property set
+	-- Returns: Picture file
+	----------------------------
+	GetFile = function(pp)
+		return pp.file;
+	end,
+	
+	------------------------------------
+	-- Sets the picture texels
+	-- pp: Picture property set
+	-- s1, t1, s2, t2: Texels to assign
+	------------------------------------
+	SetTexels = function(pp, s1, t1, s2, t2)
+		Render.SetPictureTexels(pp.picture, s1, t1, s2, t2);
+	end,
+	
+	----------------------------
+	-- Gets the picture texels
+	-- pp: Picture property set
+	-- Returns: Picture texels
+	----------------------------
+	GetTexels = function(pp)
+		return Render.GetPictureTexels(pp.picture);
+	end,
+	
+	----------------------------
+	-- Draws the picture
+	-- pp: Picture property set
+	-- x, y: Draw coordinates
+	-- w, h: Draw dimensions
+	----------------------------
+	Draw = function(pp, x, y, w, h)
+		-- If the picture is a plain userdata, draw it. 
+		if pp:Type() == "Basic" then
+			if pp.picture then
+				Render.DrawPicture(pp.picture, x, y, w, h);
+			else
+				Render.DrawBox(x, y, w, h, 1, 1, 1);
+			end
+			
+		-- The picture may also be a table, broken up into nine images: four corners, four
+		-- sides, and the middle, where the corners remain fixed above a certain threshold,
+		-- while the sides and middle expand to accomodate the new size.
+		else
+			-- Figure out the side and corner dimensions.
+			local ew, eh = math.max(w - pp.picture.wt, 0), math.max(h - pp.picture.ht, 0);
+			w, h = math.min(pp.picture.wt, w) / 2, math.min(pp.picture.ht, h) / 2;
+			
+			-- Iterate through the table entries. If an entry is a false boolean, disable
+			-- drawing until after a true boolean entry. If drawing is allowed, draw the
+			-- cell indexed by and formatted in the entry.
+			local bDraw = true;
+			for _, item in ipairs{
+				-----------
+				-- Corners
+				-----------
+				{ 1, x, y, w, h },
+				{ 3, x + w + ew, y, w, h },
+				{ 7, x, y + h + eh, w, h },
+				{ 9, x + w + ew, y + h + eh, w, h },
+				
+				------------------------
+				-- Top and bottom sides
+				------------------------
+				ew > 0,
+				{ 2, x + w, y, ew, h },
+				{ 8, x + w, y + h + eh, ew, h },
+
+				------------------------
+				-- Left and right sides
+				------------------------
+				eh > 0,
+				{ 4, x, y + h, w, eh },
+				{ 6, x + w + ew, y + h, w, eh },			
+		
+				----------
+				-- Middle
+				----------
+				ew > 0 and eh > 0,	
+				{ 5, x + w, y + h, ew, eh }
+			} do
+				if type(item) == "boolean" then
+					bDraw = item;
+				elseif bDraw then
+					local index, x, y, w, h = unpack(item);
+					pp.picture[index]:Draw(x, y, w, h);
+				end
+			end
+		end
+	end,
+	
+	--------------------------------------
+	-- Duplicates the picture
+	-- pp: Picture property set
+	-- Returns: Picture property set copy
+	--------------------------------------
+	Copy = function(pp)
+		-- Duplicate the picture property set.
+		local copy = table.copy(pp);
+		
+		-- Load all pictures according to the picture type, using the same features.
+		if pp:Type() == "Basic" then
+			copy.picture = pp.picture and Render.LoadPicture(pp.file, pp:GetTexels());
+		else
+			for index, picture in ipairs(pp.picture) do
+				copy.picture[index] = picture:Copy();
+			end
+		end
+		return copy;
+	end,
+	
+	------------------------------
+	-- Indicates the picture type
+	-- pp: Picture property set
+	-- Returns: Type descriptor
+	------------------------------
+	Type = function(pp)
+		if type(pp.picture) == "table" then
+			return "Multi";
+		else
+			return "Basic";
+		end
+	end
+},
+
+-- New
+-- pp: Picture property set
+----------------------------
+function(pp)
+	pp.file = "";
+end);

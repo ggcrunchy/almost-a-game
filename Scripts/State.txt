@@ -1,0 +1,72 @@
+---------------------------------------
+-- Variable table and set/get routines
+---------------------------------------
+local _Variable, _Set, _Get = {}, {}, {};
+
+---------------------
+-- Set
+-- Sets a variable
+-- k: Variable key
+-- v: Variable value
+---------------------
+function Set (k, v)
+	-- If there is a set routine installed, run it. Otherwise, store the raw variable.
+	if _Set[k] then
+		_Set[k](v);
+	else
+		_Variable[k] = v;
+	end
+end
+
+---------------------------
+-- Get
+-- Gets a variable
+-- k: Variable key
+-- Returns: Variable value
+---------------------------
+function Get (k)
+	-- If there is a get routine installed, return its result; otherwise, return the raw variable.
+	if _Get[k] then
+		return _Get[k]();
+	else
+		return _Variable[k];
+	end
+end
+
+----------------------------------------------------
+-- Delay
+-- Delays the application, giving control to others
+-- ms: Milliseconds to delay
+----------------------------------------------------
+function Delay (ms)
+	_Variable.Time = nil;
+	SDL.Delay(ms);
+end
+
+-- Override the save set routines.
+function _Set.Save (bSave)
+	_Variable.Save = bSave;
+	SDL.WM_SetCaption(Get("Title") .. (bSave and "*" or ""), "");
+end
+
+-- Override the time set/get routines.
+function _Set.Time (time)
+end
+
+function _Get.Time ()
+	if not _Variable.Time then
+		_Variable.Time = SDL.GetTicks();
+	end
+	return _Variable.Time;
+end
+
+-- Override the title set/get routines.
+function _Set.Title (title)
+	_Variable.Title = title;
+	Set("Save", Get("Save"));
+end
+
+function _Get.Title ()
+	return _Variable.Title or "";
+end
+

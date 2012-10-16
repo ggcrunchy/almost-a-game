@@ -1,0 +1,82 @@
+----------------------------------
+-- Table with static text methods
+----------------------------------
+DefineAssetType("Static", {
+	--------------------------------
+	-- Draws the static text
+	-- sp: Static text property set
+	-- x, y: Draw coordinates
+	-- w, h: Draw dimensions
+	--------------------------------
+	Draw = function(sp, x, y, w, h)		
+		-- Draw centered text.
+		GetAsset("Text", "Small"):DrawString(sp.text, "cx cy", x, y, w, h);
+		
+		-- Frame the text if desired.
+		if sp.bFrame then
+			Render.DrawBox(x, y, w, h, 1, 1, 1);
+		end
+	end,
+	
+	--------------------------------------------
+	-- Runs a hit test on the static text
+	-- sp: Static text property set
+	-- cx, cy: Cursor coordinates
+	-- x, y: Static text coordinates
+	-- w, h: Static text dimensions
+	-- Returns: If true, the static text is hit
+	--------------------------------------------
+	Hit = function(sp, cx, cy, x, y, w, h)
+	end,
+	
+	--------------------------------------------
+	-- Configures the static text as the choice
+	-- sp: Static text property set
+	-- x, y: Cursor coordinates
+	-- bPress: Press state
+	--------------------------------------------
+	Choose = function(sp, x, y, bPress)
+	end,
+	
+	-------------------------------------------------------------
+	-- Performs upkeep on the static text
+	-- sp: Static text property set
+	-- x, y: Cursor coordinates
+	-- bPress: Press state
+	-- bHit: If true, the static text is hit
+	-- Returns: If true, the static text is no longer the choice
+	-------------------------------------------------------------
+	Upkeep = function(sp, x, y, bPress, bHit)
+		-- If the static text is not hit, it is no longer the choice.
+		return not bHit;
+	end,
+	
+	--------------------------------
+	-- Assigns the static text
+	-- sp: Static text property set
+	-- text: Text to assign
+	--------------------------------
+	SetText = function(sp, text)
+		sp.text = text;
+	end,
+	
+	--------------------------------
+	-- Obtains the static text
+	-- sp: Static text property set
+	-- Returns: Static text
+	--------------------------------
+	GetText = function(sp)
+		return sp.text;
+	end
+},
+
+-- New
+-- sp: Static text property set
+-- x, y: Static text coordinates
+-- w, h: Static text dimensions
+-- text: Static text
+-- bFrame: If true, frame the static text
+------------------------------------------
+function(sp, x, y, w, h, text, bFrame)
+	sp.text, sp.bFrame = text, bFrame;
+end, "Widget");

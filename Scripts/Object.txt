@@ -1,0 +1,150 @@
+-----------------------------
+-- Table with object methods
+-----------------------------
+DefineAssetType("Object", {
+	---------------------------------------------
+	-- Gets the object's bounds
+	-- op: Object property set
+	-- bRelative: If true, get the screen bounds
+	-- Returns: Object bounds coordinates
+	---------------------------------------------
+	GetBounds = function(op, bRelative)
+		-- Find the position and compute the bounds.
+		local x, y = op.x, op.y;
+		if bRelative then
+			local level = Get("Level");
+			x, y = x - level:GetField("x"), y - level:GetField("y");
+		end
+		return x, y, x + op.w, y + op.h;
+	end,
+	
+	------------------------------
+	-- Sets the object's position
+	-- op: Object property set
+	-- x, y: Position to assign
+	------------------------------
+	SetPosition = function(op, x, y)
+		op.x, op.y = x, y;
+	end,
+	
+	-----------------------------------------------
+	-- Moves an object by a requested displacement
+	-- op: Object property set
+	-- dx, dy: Displacements
+	-- Returns: Actual displacements
+	-----------------------------------------------
+	Move = function(op, dx, dy)
+		local level = Get("Level");
+		
+		---------------------------
+		-- GetDXP
+		-- Computes dx when dx > 0
+		-- x: x-component
+		-- dx: Initial dx
+		-- y1, y2: Rows to cover
+		-- Returns: Updated dx
+		---------------------------
+		local function GetDXP (x, dx, y1, y2)			
+			for column = math.floor(x), math.floor(x + dx) do
+				for row = y1, y2 do
+					if level:GetCell("collision", column, row, false) then
+						return math.min(dx, column - x);
+					end
+				end
+			end
+		end
+		
+		---------------------------
+		-- GetDXN
+		-- Computes dx when dx < 0
+		-- x: x-component
+		-- dx: Initial dx
+		-- y1, y2: Rows to cover
+		-- Returns: Updated dx
+		---------------------------
+		local function GetDXN (x, dx, y1, y2)
+			for column = math.floor(x), math.floor(x + dx), -1 do
+				for row = y1, y2 do
+					if level:GetCell("collision", column, row, false) then
+						return math.max(dx, x - column - 1);
+					end
+				end
+			end
+		end
+		
+		----------------------------
+		-- GetDYP
+		-- Computes dy when dy > 0
+		-- y: y-component
+		-- dy: Initial dy
+		-- x1, x2: Columns to cover
+		-- Returns: Updated dy
+		----------------------------
+		local function GetDYP (y, dy, x1, x2)
+			for row = math.floor(y), math.floor(y + dy) do
+				for column = x1, x2 do
+					if level:GetCell("collision", column, row, false) then
+						return math.min(dy, row - y);
+					end
+				end
+			end
+		end
+		
+		----------------------------
+		-- GetDYN
+		-- Computes dy when dy < 0
+		-- y: y-component
+		-- dy: Initial dy
+		-- x1, x2: Columns to cover
+		-- Returns: Updated dy
+		----------------------------
+		local function GetDYN (y, dy, x1, x2)
+			for row = math.floor(y), math.floor(y + dy), -1 do
+				for column = x1, x2 do
+					if level:GetCell("collision", column, row, false) then
+						return math.max(dy, y - row - 1);
+					end
+				end
+			end
+		end
+		
+		-- Get the bounds and correct them for the level.
+		local x1, y1, x2, y2 = op:GetBounds(false);
+		x1, y1, x2, y2 = x1 + 1, y1 + 1, x2 + 1, y2 + 1;
+		
+		-- Correct the displacements to account for obstacles. Update the position and
+		-- return the new displacements.
+		if dx < 0 then
+			dx = GetDXN(x1, dx, math.floor(y1), math.ceil(y2) - 1) or dx;
+		elseif dx > 0 then
+			dx = GetDXP(x2, dx, math.floor(y1), math.ceil(y2) - 1) or dx;
+		end
+		if dy < 0 then
+			dy = GetDYN(y1, dy, math.floor(x1), math.ceil(x2) - 1) or dy;
+		elseif dy > 0 then
+			dy = GetDYP(y2, dy, math.floor(x1), math.ceil(x2) - 1) or dy;
+		end	
+		op.x, op.y = op.x + dx, op.y + dy;
+		return dx, dy;
+	end
+},
+
+-- New
+-- op: Object property set
+-- w, h: Object dimensions
+-- arg: Object arguments
+---------------------------
+function(op, w, h, ...)
+	op.x, op.y, op.w, op.h = 0, 0, w, h;
+end);
+
+-- Load the object components.
+return Load{
+	"Dragon.txt",
+	"Fireball.txt",
+	"Heart.txt",
+	"MoneyBag.txt",
+	"Octopus.txt",
+	"Player.txt",
+	"Weapon.txt"
+};

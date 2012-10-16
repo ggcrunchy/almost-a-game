@@ -1,0 +1,52 @@
+------------------------------
+-- TriggerScreen
+-- Goes to the trigger screen
+------------------------------
+function TriggerScreen ()
+	-- Load the common core.
+	local trigger, level = NewAsset("Static", .05, .85, .1, .125, "", true), Get("Level");
+	local data = EditorCore(
+		function(gp, column, row, current)
+			local text = trigger:GetText();
+			level:SetCell("trigger", column, row, text ~= "" and text or nil, true);
+		end,
+		function(gp, column, row)
+			return level:GetCell("trigger", column, row, true);
+		end,
+		function(gp, column, row, x, y, w, h)
+			GetAsset("Text", "Small"):DrawString(level:GetCell("trigger", column, row, true), "cx cy", x, y, w, h);
+		end,
+		TileScreen, CollisionScreen
+	);
+	
+	-- Load the trigger selection.
+	local static = Widgets("Static", Column(.025, .225, .85, .2, .05));
+	local choose = Widgets("Button", Column(.025, .175, .85, .05, .05));
+	table.insert(data, static("Dec Trigger", false));
+	table.insert(data, choose(function()
+		local text = trigger:GetText();
+		if text ~= "" then
+			local number = tostring(text - 1);
+			if number == "0" then
+				trigger:SetText("");
+			else
+				trigger:SetText(number);
+			end
+		end
+	end, "-"));
+	table.insert(data, static("Inc Trigger", false));
+	table.insert(data, choose(function()
+		local text = trigger:GetText();
+		if text == "" then
+			text = "0";
+		end
+		trigger:SetText(tostring(text + 1));
+	end, "+"));
+	table.insert(data, trigger);
+	
+	-- Install the trigger table.
+	LoadUI(data);
+	
+	-- Indicate that the trigger screen is current.
+	Set("Title", "Triggers");
+end

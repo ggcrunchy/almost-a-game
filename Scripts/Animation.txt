@@ -1,0 +1,72 @@
+--------------------------------
+-- Table with animation methods
+--------------------------------
+DefineAssetType("Animation", {
+	------------------------------
+	-- Gets the current frame
+	-- ap: Animation property set
+	-- Returns: Frame picture
+	------------------------------
+	GetFrame = function(ap)
+		local state = ap.states[ap.current];
+		if ap.frame then
+			return state[ap.frame];
+		else
+			local lapse, count = (Get("Time") - ap.now) / 1000, table.getn(state);
+			local frame = math.floor(lapse * count / ap.duration) + 1;
+			
+			--
+			if frame > table.getn(state) then
+				return ap:follow();
+			else			
+				return state[frame];
+			end
+		end
+	end,
+	
+	------------------------------------------
+	-- Plays the requested state
+	-- ap: Animation property set
+	-- state: State to assign
+	-- duration: Duration to play over
+	-- follow: Action to follow after playback
+	-------------------------------------------
+	PlayState = function(ap, state, duration, follow)
+		ap.current, ap.now, ap.duration, ap.follow, ap.frame = state, Get("Time"), duration, follow, nil;
+	end,
+	
+	------------------------------
+	-- Resets the current state
+	-- ap: Animation property set
+	------------------------------
+	ResetState = function(ap)
+		ap.now = Get("Time");
+	end,
+	
+	----------------------------------------
+	-- Locks the requested state to a frame
+	-- ap: Animation property set
+	-- state: State to assign
+	-- frame: Frame to lock
+	----------------------------------------
+	LockFrame = function(ap, state, frame)
+		ap.current, ap.now, ap.duration, ap.follow, ap.frame = state, nil, nil, nil, frame;
+	end
+},
+
+-- New
+-- ap: Animation property set
+-- states: Animation states
+-- initial: Initial state
+------------------------------
+function(ap, states, initial)
+	ap.states = {};
+	for key, state in pairs(states) do
+		ap.states[key] = {};
+		for index, frame in ipairs(state) do
+			ap.states[key][index] = NewAsset("Picture");
+			ap.states[key][index]:LoadPicture(frame, 0, 0, 1, 1);
+		end
+	end
+	ap:LockFrame(initial, 1);
+end);

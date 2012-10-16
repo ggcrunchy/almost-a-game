@@ -1,0 +1,107 @@
+---------------------------
+-- Table with text methods
+---------------------------
+DefineAssetType("Text", {
+	---------------------------------
+	-- Gets the size of a string
+	-- tp: Text property set
+	-- text: String to measure
+	-- Returns: Character dimensions
+	---------------------------------
+	GetSize = function(tp, text)
+		return Render.GetTextSize(tp.font, text);
+	end,
+	
+	--------------------------------------------
+	-- Gets the width of a string
+	-- tp: Text property set
+	-- text: String to measure
+	-- min: Index from which to begin measuring
+	-- max: Index at which to end measuring
+	-- Returns: The accumulated width
+	--------------------------------------------
+	GetWidth = function(tp, text, min, max)
+		-- Create an empty cache. 
+		local cache, w, vw = {}, 0, 1 / Render.GetVideoSize();
+		for char in string.gfind(string.sub(text, min, math.min(max, string.len(text))), ".") do
+			-- If the character width is not cached, compute it and do so now.
+			if not cache[char] then
+				cache[char] = tp:GetSize(char);
+			end
+			
+			-- Accumulate the width.
+			w = w + cache[char] * vw;
+		end
+		return w;
+	end,
+	
+	----------------------------------------------
+	-- Draws a clipped string at a given position
+	-- tp: Text property set
+	-- text: String to draw
+	-- options: Drawing options
+	-- x, y: String coordinates
+	-- w, h: String clipping dimensions
+	-- Returns: The clipped dimensions
+	----------------------------------------------
+	DrawString = function(tp, text, options, x, y, w, h)
+		-- Collect the drawing options.
+		local ops, vw, vh = {}, Render.GetVideoSize();
+		for word in string.gfind(options, "%w+") do
+			ops[word] = true;
+		end
+		
+		-- If requested, center the text.
+		if ops.cx or ops.cy then
+			local cw, ch = tp:GetSize(text);
+			x, y = ops.cx and x + .5 * (w - cw / vw) or x, ops.cy and y + .5 * (h - ch / vh) or y;
+		end
+	
+		-- Compute the edge of the clip area, and create an empty cache. If the end of the
+		-- string is reached, the current x-coordinate will be the clipped width.
+		local cache, ew = {}, x + w;
+		for char in string.gfind(text, ".") do
+			-- If the character is not cached, compute its global coordinates and do so.
+			if not cache[char] then
+				local cw, ch = tp:GetSize(char);
+				cache[char] = { w = cw / vw, h = ch / vh };
+			end
+			local dim = cache[char];
+			
+			-- If the next character will not step off the edge of the clip width, draw it
+			-- and increment the x-coordinate.
+			if x + dim.w < ew then
+				Render.DrawTextImage(tp.textset[char], x, y, dim.w, dim.h);
+				x = x + dim.w;
+				
+			-- If the character does overstep the clip width, draw as much of it as
+			-- possible, and return the edge as the clipped width.
+			else
+				Render.DrawClippedTextImage(tp.textset[char], x, y, dim.w, dim.h, ew - x, h);
+				return ew, h;
+			end
+		end
+		return x, h;
+	end
+}, 
+
+-- New
+-- tp: Text property set
+-- name: Font name
+-- size: Font size
+-- r, g, b: Text color
+-------------------------
+function(tp, name, size, r, g, b)
+	tp.font, tp.textset = Render.LoadFont(name, size), {};
+	
+	-- Load all relevant symbols.
+	for char in string.gfind("ABCDEFGHIJKLMNOPQRSTUVWXYZ_.!?,;:()-+' 0123456789", ".") do
+		tp.textset[char] = Render.LoadTextImage(tp.font, char, r, g, b);
+		
+		-- If the character is alphabetic, load its lowercase counterpart.
+		local lower = string.lower(char);
+		if char ~= lower then
+			tp.textset[lower] = Render.LoadTextImage(tp.font, lower, r, g, b);
+		end
+	end
+end);

@@ -1,0 +1,48 @@
+-----------------------------
+-- Table with weapon methods
+-----------------------------
+DefineAssetType("Weapon", {
+	-----------------------------------------------
+	-- Gets the weapon's bounds
+	-- wp: Weapon property set
+	-- bRelative: If true, get the screen bounds
+	-- Returns: Weapon bounds coordinates
+	-----------------------------------------------
+	GetBounds = function(wp, bRelative)
+		-- Compute the bounds relative to the player.
+		local x1, y1, x2, y2 = Get("Player"):GetBounds(bRelative);
+		if Get("Player"):FacingLeft() then
+			return x1 - wp.w, y1 - wp.h, x1, y1;
+		else
+			return x2, y2, x2 + wp.w, y2 + wp.h;
+		end
+	end,
+	
+	----------------------------
+	-- Gets the weapon's damage
+	-- wp: Weapon property set
+	-- Returns: Damage amount
+	----------------------------
+	GetDamage = function(wp)
+		-- Weapons only deal damage when active.
+		return wp.bActive and wp.damage or 0;
+	end,
+	
+	-----------------------------------------
+	-- Sets the weapon's active state
+	-- wp: Weapon property set
+	-- bActive: If true, activate the weapon
+	-----------------------------------------
+	SetActive = function(wp, bActive)
+		wp.bActive = bActive;
+	end
+},
+
+-- New
+-- wp: Weapon property set
+-- w, h: Weapon dimensions
+-- damage: Damage dealt by weapon
+----------------------------------
+function(wp, w, h, damage)
+	wp.w, wp.h, wp.damage = w, h, damage;
+end);

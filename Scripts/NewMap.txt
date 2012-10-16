@@ -1,0 +1,63 @@
+-----------------------------------
+-- NewMap
+-- Generates a new map
+-- params: Table of map parameters
+-----------------------------------
+function NewMap (params)
+	-- Extract the screen and cell counts from the input editboxes. If any of these are
+	-- zero, the map build fails.
+	local quants = {};
+	for _, value in params do
+		local number = tonumber(value:GetText());
+		if number == 0 then
+			return;
+		end
+		table.insert(quants, number);
+	end
+
+	-- Load the new level.
+	Set("Level", NewAsset("Level", quants[1], quants[2], quants[3], quants[4], "collision", "spawnpoint", "tile", "trigger"));
+
+	-- Begin in the tile screen.
+	TileScreen();
+end
+
+---------------------------
+-- NewMapDialog
+-- Builds a new map dialog
+---------------------------
+function NewMapDialog ()
+	local button = Widgets("Button", Row(.025, .05, .55, .15, .1));
+	local static, params = Widgets("Static", Column(.025, .1, .05, .2, .1)), {};
+	local editbox = Widgets("Editbox", Column(.025, .4, .05, .2, .1), params);
+	PopupUI{
+		------------
+		-- Backdrop
+		------------
+		NewAsset("Panel", 0, 0, .7, .7),
+		
+		--------------
+		-- Create map
+		--------------
+		button(function()
+			NewMap(params);
+		end, "Create"), 
+		
+		--------------
+		-- Navigation
+		--------------
+		button(ClosePopupUI, "Cancel"),
+		
+		-------------
+		-- Selection
+		-------------
+		static("Screens wide", false),
+		editbox(FilterInteger(10), "1"),
+		static("Screens high", false),
+		editbox(FilterInteger(10), "1"),
+		static("Columns", false),
+		editbox(FilterInteger(25), "10"),
+		static("Rows", false),
+		editbox(FilterInteger(25), "10")
+	};
+end

@@ -1,0 +1,80 @@
+-------------------------------------
+-- Printf
+-- Used to print a formatted message
+-- format: Format string
+-- arg: Arguments to string
+-------------------------------------
+function Printf (format, ...)
+	io.stderr:write(string.format(format, unpack(arg)), "\n");
+end
+
+---------------------------------------
+-- Load
+-- Loads a set of scripts
+-- scripts: Ordered script table
+-- Returns: If true, an error occurred
+---------------------------------------
+function Load (scripts)
+	for _, entry in pairs(scripts) do
+		-- If an entry is a string, load the script it references.
+		if type(entry) == "string" then
+			local file, error = loadfile("Scripts/" .. entry);
+			if not file then
+				Printf("Unable to load script: " .. entry);
+				Printf(error);
+				return true;
+			end
+			file();
+			
+		-- If an entry is a function, evaluate it.
+		elseif type(entry) == "function" then
+			if entry() then
+				return true;
+			end
+		end
+	end
+end
+
+-- Entry point: initialize the systems to be used.
+Render.SetupGraphics(640, 480, 0, false);
+
+-- Load the scripts in order, reporting and quitting on a problem.
+Load{
+	-------------------------
+	-- Some useful functions
+	-------------------------
+	"File.txt",
+	"Format.txt",
+	"Table.txt",
+	
+	-------------
+	-- Resources
+	-------------
+	"Asset.txt",
+		
+	---------
+	-- Scene
+	---------
+	"Input.txt",
+	"State.txt",
+	"UI.txt",
+	
+	----------------
+	-- Data loading
+	----------------
+	"Data.txt",
+	
+	-----------------
+	-- Main branches
+	-----------------
+	"Editor.txt",
+	"Game.txt",
+		
+	-----------------
+	-- Main function
+	-----------------
+	"Main.txt"
+};
+
+-- Close the program.
+Render.CloseGraphics();

@@ -1,0 +1,200 @@
+----------------------------
+-- Table with level methods
+----------------------------
+DefineAssetType("Level", {
+	---------------------------------
+	-- Gets a level field
+	-- lp: Level property set
+	-- field: Name of field
+	-- Returns: Value of field
+	---------------------------------
+	GetField = function(lp, field)
+		if field ~= "tables" then
+			return lp[field];
+		end
+	end,
+	
+	--------------------------
+	-- Scrolls the level
+	-- lp: Level property set
+	-- dx, dy: Displacements
+	--------------------------
+	Scroll = function(lp, dx, dy)
+		local x, y = lp.x + dx, lp.y + dy;
+		if x >= 0 and x <= lp.w - lp.columns then
+			lp.x = x;
+		end
+		if y >= 0 and y <= lp.h - lp.rows then
+			lp.y = y;
+		end
+	end,
+	
+	--------------------------------------------------
+	-- SetCell
+	-- Assigns a value to a level cell
+	-- lp: Level property set
+	-- name: Name of cell table
+	-- column, row: Column and row of cell
+	-- value: Value to assign to cell
+	-- bRelative: If true, cell is relative to screen
+	--------------------------------------------------
+	SetCell = function(lp, name, column, row, value, bRelative)
+		if lp.tables[name] then
+			if bRelative then
+				row, column = row + lp.y, column + lp.x;
+			end
+			lp.tables[name][(row - 1) * lp.w + column] = value;
+		end
+	end,
+	
+	--------------------------------------------------
+	-- GetCell
+	-- Acquires the value of a level cell
+	-- lp: Level property set
+	-- name: Name of cell table
+	-- column, row: Column and row of cell
+	-- bRelative: If true, cell is relative to screen
+	-- Returns: Value of cell
+	--------------------------------------------------
+	GetCell = function(lp, name, column, row, bRelative)
+		if lp.tables[name] then
+			if bRelative then
+				row, column = row + lp.y, column + lp.x;
+			end
+			return lp.tables[name][(row - 1) * lp.w + column];
+		end
+	end,
+	
+	----------------------------------------------------
+	-- Builds an iterator over a table's valid cells
+	-- lp: Level property set
+	-- name: Cell table name
+	-- Returns: Iterator which supplies x, y, and value
+	----------------------------------------------------
+	Iter = function(lp, name)
+		local table = lp.tables[name];
+		return coroutine.wrap(function()
+			-- Iterate through the cells, returning non-nil entries.
+			local index = 1;
+			for y = 1, lp.h do
+				for x = 1, lp.w do
+					if table[index] ~= nil then
+						coroutine.yield(x, y, table[index]);
+					end
+					index = index + 1;
+				end
+			end
+		end);
+	end,
+	
+	------------------------------------------------------------------------
+	-- Builds an iterator over the visible portion of a table's valid cells
+	-- lp: Level property set
+	-- name: Cell table name
+	-- extrax, extray: Extra columns and rows to each side of the view
+	-- Returns: Iterator which supplies x, y, and value
+	------------------------------------------------------------------------
+	View = function(lp, name, extrax, extray)
+		-- Get the bounds of the view.
+		local table, extrax, extray = lp.tables[name], extrax or 0, extray or 0;
+		local minx, maxx = ClampIn(lp.x - extrax, 0, lp.w) + 1, ClampIn(lp.x + extrax + lp.columns, 0, lp.w);
+		local miny, maxy = ClampIn(lp.y - extray, 0, lp.h) + 1, ClampIn(lp.y + extray + lp.rows, 0, lp.h);		
+
+		-- Iterate over the view, clamping to the boundary cells. Return non-nil values.
+		return coroutine.wrap(function()
+			for y = math.floor(miny), math.ceil(maxy) do
+				for x = math.floor(minx), math.ceil(maxx) do
+					local index = (y - 1) * lp.w + x;
+					if table[index] ~= nil then
+						coroutine.yield(x, y, table[index]);
+					end
+				end
+			end
+		end);
+	end
+},
+
+-- New
+-- lp: Level property set
+-- screenw, screenh: Screen-wise dimensions
+-- columns, rows: Columns and rows per screen
+-- arg: Cell tables to load
+----------------------------------------------
+function(lp, screenw, screenh, columns, rows, ...)
+	lp.x, lp.y, lp.w, lp.h, lp.columns, lp.rows, lp.tables = 0, 0, screenw * columns, screenh * rows, columns, rows, {};
+	for _, name in ipairs(arg) do
+		lp.tables[name] = {};
+	end
+end);
+
+---------------------------------------
+-- LoadLevelDialog
+-- Builds a load level dialog
+-- follow: Action to take after a load
+---------------------------------------
+function LoadLevelDialog(follow)
+	-- Build the level list. Load the first entry in the display.
+	local static, levelset = Widgets("Static", Column(.025, .1, .05, .2, .1)), {};
+	local heading = static("Level", false);
+	local current = static("", true);
+	local levelset = {};
+	for level in ScanFolder("Levels") do
+		if level ~= "." and level ~= ".." then
+			table.insert(levelset, level);
+		end
+	end
+	if table.getn(levelset) > 0 then
+		current:SetText(levelset[1]);
+	end
+	
+	-- Install the popup.
+	local button = Widgets("Button", Row(.025, .05, .35, .15, .1));
+	local static = Widgets("Static", Column(.025, .4, .1675, .15, .05));
+	local choose, index = Widgets("Button", Column(.025, .325, .1675, .05, .05)), 1;
+	PopupUI{
+		------------
+		-- Backdrop
+		------------
+		NewAsset("Panel", 0, 0, .7, .5),
+		
+		--------------
+		-- Load level
+		--------------
+		button(function()
+			if current:GetText() ~= "" then
+				local level, error = loadfile("Levels/" .. current:GetText());
+				if level then
+					level();
+					follow();
+				else
+					Printf(error);
+				end
+			end
+		end, "Load"),
+		
+		--------------
+		-- Navigation
+		--------------
+		button(ClosePopupUI, "Cancel"),
+		
+		-------------
+		-- Selection
+		-------------
+		heading,
+		current,
+		static("Prev Level", false),
+		choose(function()
+			if index ~= 1 then
+				index = index - 1;
+				current:SetText(levelset[index]);
+			end		
+		end, "-"),
+		static("Next Level", false),
+		choose(function()
+			if index ~= table.getn(levelset) then
+				index = index + 1;
+				current:SetText(levelset[index]);
+			end		
+		end, "+")
+	};
+end

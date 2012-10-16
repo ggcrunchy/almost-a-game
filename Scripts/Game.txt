@@ -1,0 +1,139 @@
+---------------------------
+-- Enemy and object tables
+---------------------------
+local _Enemy, _Object = {}, {};
+
+---------------------------
+-- GameScreen
+-- Goes to the game screen
+---------------------------
+function GameScreen ()
+	-- Clear the UI.
+	LoadUI{};
+
+	-- Hide the cursor.
+	SDL.ShowCursor(SDL.FALSE);
+
+	-- Set the input trap.
+	Set("Trap", function(type, event)
+		if type == "Key" then
+			local binding = GetKeyBinding(event.sym);
+			if binding then
+				Get("Player"):SendEvent(binding, GetKeyState(event.sym));
+			end
+		end
+	end);
+
+	-- Start the game.
+	Set("Game", true);
+	
+	-- Load all characters.
+	LoadSpawnPoints();
+		
+	-- Indicate that the game screen is current.
+	Set("Title", "Game");
+end
+
+--------------------------
+-- DrawGame
+-- Draws the game objects
+--------------------------
+function DrawGame ()
+	if Get("Game") then
+		-- Draw the level.
+		local level = Get("Level");
+		local absx, absy = level:GetField("x"), level:GetField("y");
+		local w, h = 1 / level:GetField("columns"), 1 / level:GetField("rows");
+		for x, y, tile in level:View("tile") do
+			tile:Draw((x - absx - 1) * w, (y - absy - 1) * h, w, h);
+		end
+		
+		-- Draw objects.
+		Get("Player"):Draw();
+		for _, object in ipairs(_Object) do
+			object:Draw();
+		end
+		for _, enemy in ipairs(_Enemy) do
+			enemy:Draw();
+		end
+	end
+end
+
+----------------------------
+-- UpdateGame
+-- Updates the game objects
+----------------------------
+function UpdateGame ()
+	if Get("Game") then
+		-- Check for enemy-weapon collisions.
+		for _, enemy in ipairs(_Enemy) do
+			local wx1, wy1, wx2, wy2 = Get("Weapon"):GetBounds(false);
+			if BoxesIntersect(wx1, wy1, wx2, wy2, enemy:GetBounds(false)) then
+				enemy:Damage(Get("Weapon"):GetDamage());
+			end
+		end
+		
+		-- Check for enemy-player collisions.
+		for _, enemy in ipairs(_Enemy) do
+			local px1, py1, px2, py2 = Get("Player"):GetBounds(false);
+			if BoxesIntersect(px1, py1, px2, py2, enemy:GetBounds(false)) then
+				Get("Player"):Damage(enemy:GetDamage());
+			end
+		end
+		
+		-- ResolveCollisions();
+		
+		-- Update objects
+		Get("Player"):Update();
+		for _, object in ipairs(_Object) do
+			object:Update();
+		end
+		for _, enemy in ipairs(_Enemy) do
+			enemy:Update();
+		end
+	end
+end
+
+------------------
+-- GameOver
+-- Quits the game
+------------------
+function GameOver ()
+	Set("Game", false);
+	TitleScreen();
+end
+
+------------------------------
+-- LoadSpawnPoints
+-- Loads all spawn point data
+------------------------------
+function LoadSpawnPoints ()
+	local level = Get("Level");
+	_Enemy, _Object = {}, {};
+	for x, y, spawnpoint in level:View("spawnpoint") do
+		if spawnpoint.name == "Player" then
+			Set("Player", NewAsset("Player", 1, 2, 5));
+			Set("Weapon", NewAsset("Weapon", 1, 1, 1));
+			Get("Player"):SetPosition(x - 1, y - 1);
+			for index = 1, 5 do
+				table.insert(_Object, NewAsset("Heart", 1, 1, index));
+			end
+		elseif spawnpoint.name == "Octopus" then
+			local octopus = NewAsset("Octopus", 2, 2, 3, 1);
+			octopus:SetPosition(x - 1, y - 1);
+			table.insert(_Enemy, octopus);
+		elseif spawnpoint.name == "Dragon" then
+			local dragon = NewAsset("Dragon", 2, 2, 3, 1);
+			dragon:SetPosition(x - 1, y - 1);
+			table.insert(_Enemy, dragon);				
+		end
+	end
+end
+
+-- Load the game components.
+return Load{
+	"Animation.txt",
+	"Object.txt",
+	"Scroll.txt",
+	"Settings.txt"
+};

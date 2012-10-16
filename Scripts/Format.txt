@@ -1,0 +1,142 @@
+-------------------------------------------
+-- PointInBox
+-- Indicates whether a point lies in a box
+-- px, py: Point coordinates
+-- x, y: Box coordinates
+-- w, h: Box dimensions
+-- Returns: If true, point is contained
+-------------------------------------------
+function PointInBox (px, py, x, y, w, h)
+	if px < x or px >= x + w then
+		return false;
+	end
+	if py < y or py >= y + h then
+		return false;
+	end
+	return true;
+end
+
+-----------------------------------------------
+-- BoxInBox
+-- Indicates whether a box lies in another box
+-- bx, by: Box coordinates
+-- bw, bh: Box dimensions
+-- x, y: Container box coordinates
+-- w, h: Container box dimensions
+-- Returns: If true, box is contained
+-----------------------------------------------
+function BoxInBox (bx, by, bw, bh, x, y, w, h)
+	if bx < x or bx + bw > x + w then
+		return false;
+	end
+	if by < y or by + bh > y + h then
+		return false;
+	end
+	return true;
+end
+
+-----------------------------------------
+-- BoxesIntersect
+-- Indicates whether two boxes intersect
+-- bx1, by1, bx2, by2: Box 1 coordinates
+-- cx1, cy1, cx2, cy2: Box 2 coorindates
+-- Returns: If true, boxes intersect
+-----------------------------------------
+function BoxesIntersect (bx1, by1, bx2, by2, cx1, cy1, cx2, cy2)
+	if bx2 < cx1 or cx2 < bx1 or by2 < cy1 or cy2 < by1 then
+		return false;
+	end
+	return true;
+end 
+
+----------------------------------------
+-- SortPairs
+-- Sorts a pair of coordinates
+-- x1, y1: First pair of coordinates
+-- x2, y2: Second pair of coordinates
+-- Returns: The sorted coordinate pairs 
+----------------------------------------
+function SortPairs (x1, y1, x2, y2)
+	if x1 > x2 then
+		x1, x2 = x2, x1;
+	end
+	if y1 > y2 then
+		y1, y2 = y2, y1;
+	end
+	return x1, y1, x2, y2;
+end
+
+-------------------------------------------------
+-- Rect
+-- Converts coordinate pairs into a rectangle
+-- x1, y1: First pair of coordinates
+-- x2, y2: Second pair of coordinates
+-- Returns: Rectangle coordinates and dimensions
+-------------------------------------------------
+function Rect (x1, y1, x2, y2)
+	x1, y1, x2, y2 = SortPairs(x1, y1, x2, y2);
+	return x1, y1, x2 - x1, y2 - y1;
+end
+
+--------------------------------------
+-- ClampIn
+-- Clamps a number between two bounds
+-- n: Number to clamp
+-- min, max: Bounds to clamp between
+--------------------------------------
+function ClampIn (n, min, max)
+	return math.min(math.max(n, min), max);
+end
+
+----------------------------------------------------------------
+-- Column
+-- Builds a closure indicating where to add next item in column
+-- space: Space between items in column
+-- x, y: Upper-left corner of column
+-- w, h: Dimensions of column item
+-- Returns: The closure for the column
+----------------------------------------------------------------
+function Column (space, x, y, w, h)
+	return function(extra)
+		local yCur, h = y, h + (extra or 0);
+		y = y + h + space;
+		return x, yCur, w, h;
+	end;
+end
+
+-------------------------------------------------------------
+-- Row
+-- Builds a closure indicating where to add next item in row
+-- space: Space between items in row
+-- x, y: Upper-left corner of row
+-- w, h: Dimensions of row item
+-- Returns: The closure for the row
+-------------------------------------------------------------
+function Row (space, x, y, w, h)
+	return function(extra)
+		local xCur, w = x, w + (extra or 0);
+		x = x + w + space;
+		return xCur, y, w, h;
+	end;
+end
+
+----------------------------------------------------------------------------------
+-- WideColumn
+-- Builds a closure indicating where to add next item, iterating first over a row
+-- spacex, spacey: Space between items in row and column
+-- width: Number of items per row
+-- x, y: Upper-left corner of start
+-- w, h: Dimensions of item
+-- Returns: The closure for the wide column
+----------------------------------------------------------------------------------
+function WideColumn (spacex, spacey, width, x, y, w, h)
+	local colgen = Column(spacey, x, y, w, h)
+	return coroutine.wrap(function()		
+		while true do
+			local rowgen = Row(spacex, colgen());
+			for column = 1, width do
+				coroutine.yield(rowgen());
+			end
+		end
+	end);
+end

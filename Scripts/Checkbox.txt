@@ -1,0 +1,91 @@
+-------------------------------
+-- Table with checkbox methods
+-------------------------------
+DefineAssetType("Checkbox", {
+	-----------------------------
+	-- Draws the checkbox
+	-- cp: Checkbox property set
+	-- x, y: Draw coordinates
+	-- w, h: Draw dimensions
+	-----------------------------
+	Draw = function(cp, x, y, w, h)
+		GetAsset("Picture", "Button"):Draw(x, y, w, h);
+		
+		-- Draw the check.
+		if cp.bCheck then
+			GetAsset("Text", "Small"):DrawString("X", "cx cy", x, y, w, h);
+		end
+	end,
+	
+	-----------------------------------------
+	-- Runs a hit test on the checkbox
+	-- cp: Checkbox property set
+	-- cx, cy: Cursor coordinates
+	-- x, y: Checkbox coordinates
+	-- w, h: Checkbox dimensions
+	-- Returns: If true, the checkbox is hit
+	-----------------------------------------
+	Hit = function(cp, cx, cy, x, y, w, h)
+		return PointInBox(cx, cy, x, y, w, h);
+	end,
+	
+	-----------------------------------------
+	-- Configures the checkbox as the choice
+	-- cp: Checkbox property set
+	-- x, y: Cursor coordinates
+	-- bPress: Press state
+	-----------------------------------------
+	Choose = function(cp, x, y, bPress)
+		if bPress then
+			cp.bCheck = not cp.bCheck;
+		end
+		cp.bHeld = bPress;
+	end,
+	
+	----------------------------------------------------------
+	-- Performs upkeep on the checkbox
+	-- cp: Checkbox property set
+	-- x, y: Cursor coordinates
+	-- bPress: Press state
+	-- bHit: If true, the checkbox is hit
+	-- Returns: If true, the checkbox is no longer the choice
+	----------------------------------------------------------
+	Upkeep = function(cp, x, y, bPress, bHit)
+		cp.bIn = bHit;
+
+		-- If there is a hit and a press, grab the checkbox and toggle the check.
+		if bHit and bPress then
+			if not cp.bHeld then
+				cp.bCheck = not cp.bCheck;
+			end
+			cp.bHeld = true;
+		end
+
+		-- If the checkbox is held, release it if there is no press.
+		if cp.bHeld and not bPress then
+			cp.bHeld = false;
+		end
+
+		-- If the checkbox is neither hit nor held, it is no longer the choice.
+		return not bHit and not cp.bHeld;
+	end,
+	
+	--------------------------------
+	-- Gets the checkbox check state
+	-- cp: Checkbox property set
+	-- Returns: Checkbox state
+	--------------------------------
+	GetCheck = function(cp)
+		return cp.bCheck;
+	end
+},
+
+-- New
+-- cp: Checkbox property set
+-- x, y: Checkbox coordinates
+-- w, h: Checkbox dimensions
+-- bCheck: Initial check state
+-------------------------------
+function(cp, x, y, w, h, bCheck)
+	cp.bCheck = bCheck;
+end, "Widget");

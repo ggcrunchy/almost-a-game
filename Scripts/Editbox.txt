@@ -1,0 +1,180 @@
+------------------------------
+-- Table with editbox methods
+------------------------------
+DefineAssetType("Editbox", {
+	----------------------------
+	-- Draws the editbox
+	-- ep: Editbox property set
+	-- x, y: Draw coordinates
+	-- w, h: Draw dimensions
+	----------------------------
+	Draw = function(ep, x, y, w, h)
+		GetAsset("Picture", "Editbox"):Draw(x, y, w, h);
+		
+		-- Blink the cursor on and off after the text if the editbox is the focus.
+		local cursor = "";
+		if IsFocusUI(ep) then
+			local time = Get("Time");
+			if time - ep.start > 600 then
+				ep.start = time;
+			elseif time - ep.start < 300 then
+				cursor = "_";
+			end
+		end
+			
+		-- Draw editbox text.
+		GetAsset("Text", "Small"):DrawString(ep.text .. cursor, "cy", x + .075 * w, y, .85 * w, h);
+	end,
+	
+	----------------------------------------
+	-- Runs a hit test on the editbox
+	-- ep: Editbox property set
+	-- cx, cy: Cursor coordinates
+	-- x, y: Editbox coordinates
+	-- w, h: Editbox dimensions
+	-- Returns: If true, the editbox is hit
+	----------------------------------------
+	Hit = function(ep, cx, cy, x, y, w, h)
+		return PointInBox(cx, cy, x, y, w, h);
+	end,
+	
+	----------------------------------------
+	-- Configures the editbox as the choice
+	-- ep: Editbox property set
+	-- x, y: Cursor coordinates
+	-- bPress: Press state
+	----------------------------------------
+	Choose = function(ep, x, y, bPress)
+		ep.bHeld = bPress;
+	end,
+	
+	---------------------------------------------------------
+	-- Performs upkeep on the editbox
+	-- ep: Editbox property set
+	-- x, y: Cursor coordinates
+	-- bPress: Press state
+	-- bHit: If true, the editbox is hit
+	-- Returns: If true, the editbox is no longer the choice
+	---------------------------------------------------------
+	Upkeep = function(ep, x, y, bPress, bHit)
+		-- If there is a hit and a press, grab the editbox.
+		if bHit and bPress then
+			ep.bHeld = true;
+		end
+		
+		-- If the button is held, release it if there is no press.
+		if ep.bHeld and not bPress then
+			ep.bHeld = false;
+		end		
+		
+		-- If the editbox is neither hit nor held, it is no longer the choice.
+		return not bHit and not ep.bHeld;
+	end,
+	
+	----------------------------
+	-- Traps events to editbox
+	-- ep: Editbox property set
+	-- type: Event prefix
+	-- event: Event to trap
+	----------------------------
+	Trap = function(ep, type, event)
+		-- Ignore filtered events.
+		if ep:filter(type, event) then
+			return;
+		end
+		
+		-- Process keydown events.
+		if type == "Key" and GetKeyState(event.sym) then
+			-- On Backspace, remove the last character.
+			if event.sym == SDL.K_BACKSPACE then
+				if ep.text ~= "" then
+					ep.text = string.sub(ep.text, 1, -2);
+				end
+						
+			-- If letter keys are pressed, get the character. Perform capitalization
+			-- according to the state of the Shift and Caps Lock modifiers: on a match, use
+			-- lowercase; otherwise uppercase. Add the character to the string.
+			elseif event.sym >= SDL.K_a and event.sym <= SDL.K_z then
+				local char, bShift = string.char(event.sym), Misc.And(event.mod, SDL.KMOD_SHIFT) ~= 0;
+				ep.text = ep.text .. (Misc.Test(event.mod, SDL.KMOD_CAPS) ~= bShift and string.upper(char) or char);
+				
+			-- In the case of other valid keys, supply the corresponding character.
+			elseif event.sym >= SDL.K_0 and event.sym <= SDL.K_9 or event.sym == SDL.K_SPACE then
+				ep.text = ep.text .. string.char(event.sym);
+			end			
+		end
+	end,
+	
+	----------------------------
+	-- Gets the editbox text
+	-- ep: Editbox property set
+	-- Returns: Editbox text
+	----------------------------
+	GetText = function(ep)
+		return ep.text;
+	end
+},
+
+-- New
+-- ep: Editbox property set
+-- x, y: Editbox coordinates
+-- w, h: Editbox dimensions
+-- filter: Text filter
+-- text: Editbox text
+----------------------------
+function(ep, x, y, w, h, filter, text)
+	ep.filter, ep.text, ep.start = filter, text, Get("Time");
+end, "Widget");
+
+-------------------------------------------------
+-- FilterString
+-- Builds a closure to filter string characters
+-- maxlen: Maximum string length allowable
+-- bLeadingDigits: If true, allow leading digits
+-------------------------------------------------
+function FilterString (maxlen, bLeadingDigits)
+	return function(ep, type, event)
+		-- Ignore non-pressed keys.
+		if type ~= "Key" or not GetKeyState(event.sym) then
+			return true;
+		
+		-- Permit backspaces.
+		elseif event.sym == SDL.K_BACKSPACE then
+			return false;
+		
+		-- If the string is full, disallow the character.
+		elseif string.len(ep:GetText()) == maxlen then
+			return true;
+		
+		-- Disallow leading numbers if requested.
+		elseif event.sym >= SDL.K_0 and event.sym <= SDL.K_9 then
+			if not bLeadingDigits and not string.find(ep:GetText(), "[^%d]") then
+				return true;
+			end
+		end
+	end
+end
+
+-----------------------------------------------
+-- FilterUnsigned
+-- Builds a closure to filter unsigned numbers
+-- max: Maximum number allowable
+-----------------------------------------------
+function FilterInteger (max)
+	return function(ep, type, event)
+		-- Ignore non-pressed keys.
+		if type ~= "Key" or not GetKeyState(event.sym) then
+			return true;
+		
+		-- Make sure the key is either a number or backspace; NOP on the latter.
+		elseif event.sym < SDL.K_0 or event.sym > SDL.K_9 then
+			return event.sym ~= SDL.K_BACKSPACE;
+		end
+		
+		-- Disallow leading zeroes or sums greater than the maximum.
+		local number = tonumber(ep:GetText() .. string.char(event.sym));
+		if number == 0 or number > max then
+			return true;
+		end 
+	end
+end

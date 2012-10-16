@@ -1,0 +1,127 @@
+----------------------------
+-- EditorScreen
+-- Goes to the editor screen
+----------------------------
+function EditorScreen ()
+	-- Install the main editor options.
+	local button = Widgets("Button", Column(.05, .4, .3, .2, .1));
+	LoadUI{
+		button(NewMapDialog, "New"),
+		button(function()
+			LoadLevelDialog(TileScreen)
+		end, "Load"),
+		button(function()
+			TitleScreen();
+		end, "Back")
+	};
+
+	-- Set the input trap.
+	Set("Trap", function(type, event)
+		if type == "Key" and event.sym == SDL.K_TAB and GetKeyState(event.sym) then
+			AdvanceFocusUI();
+		else
+			SendEventUI(type, event);
+		end
+	end);
+
+	-- Indicate that the editor screen is current.
+	Set("Title", "Editor");
+end
+
+----------------------------------------------
+-- EditorCore
+-- Builds the common core of editor UI tables
+-- set, get, draw: Grid routines
+-- prev, next: Navigation routines
+-- Returns: The common table portion
+----------------------------------------------
+function EditorCore (set, get, draw, prev, next)
+	-- Install the core.
+	local level = Get("Level");
+	local button = Widgets("Button", WideColumn(.025, .025, 2, .65, .85, .15, .05));
+	local scroll = Widgets("Button", WideColumn(.025, .025, 2, .5, .85, .05, .05));
+	return {
+		--------
+		-- Grid
+		--------
+		NewAsset("Grid", 0, 0, 1, .8, level:GetField("columns"), level:GetField("rows"),
+			function(gp, column, row, current)
+				set(gp, column, row, current);
+				Set("Save", true);
+			end, get, draw),
+		
+		--------------
+		-- Navigation
+		--------------
+		button(prev, "Prev"),
+		button(next, "Next"),
+		
+		--------------
+		-- Management
+		--------------
+		button(SaveMapDialog, "Save"),
+		button(function()
+			---------------------
+			-- Close
+			-- Closes the editor
+			---------------------
+			local function Close ()
+				Set("Save", false);
+				Set("Level", nil);
+				EditorScreen();	
+			end
+			
+			-- If there are unsaved changes, post a warning.
+			if Get("Save") then
+				local button = Widgets("Button", Row(.025, .05, .35, .125, .1));
+				local static = Widgets("Static", Column(0, .025, .1, .5, .1));
+				PopupUI{
+					------------
+					-- Backdrop
+					------------
+					NewAsset("Panel", 0, 0, .6, .5),
+					
+					-----------
+					-- Message
+					-----------
+					static("Some changes are unsaved.", false),
+					static("Quit anyway?", false),
+					
+					--------------
+					-- Management
+					--------------
+					button(Close, "OK"),
+					button(ClosePopupUI, "Cancel")
+				};
+			else
+				Close();
+			end
+		end, "Close"),
+		
+		------------------
+		-- Scroll buttons
+		------------------
+		scroll(function()
+			level:Scroll(0, -1);
+		end, "U"),
+		scroll(function()
+			level:Scroll(0, 1);
+		end, "D"),
+		scroll(function()
+			level:Scroll(-1, 0);
+		end, "L"),
+		scroll(function()
+			level:Scroll(1, 0);
+		end, "R")	
+	};
+end
+
+-- Load the editor components.
+return Load{
+	"Collision.txt",
+	"NewMap.txt",
+	"SaveMap.txt",
+	"SpawnPoint.txt",
+	"Tile.txt",
+	"Trigger.txt"
+};

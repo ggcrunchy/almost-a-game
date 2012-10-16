@@ -1,0 +1,46 @@
+----------------------------
+-- TitleScreen
+-- Goes to the title screen
+----------------------------
+function TitleScreen ()
+	-- Install the buttons for choosing the editor or game, or for quitting out. On a press
+	-- of the first two, reload the scripts.
+	local button = Widgets("Button", Column(.05, .4, .3, .2, .1));
+	LoadUI{
+		button(EditorScreen, "Editor"),
+		button(function()
+			LoadLevelDialog(GameScreen);
+		end, "Game"),
+		button(function()
+			Set("Quit", true);
+		end, "Quit")
+	};
+	
+	-- Show the cursor.
+	SDL.ShowCursor(SDL.TRUE);
+	
+	-- Indicate that the title screen is current.
+	Set("Title", "Title Screen");
+end
+
+-- Center the cursor.
+local w, h = Render.GetVideoSize();
+SDL.WarpMouse(w / 2, h / 2);
+	
+-- Start out from the title screen.
+TitleScreen();
+
+-- Run the main loop.
+while not Get("Quit") do
+	UpdateInput();
+	UpdateGame();
+	
+	-- Refresh the scene.
+	Render.PrepareFrame();
+	DrawGame();
+	DrawUI();
+	Render.DrawFrame();
+	
+	-- Give time to other threads.
+	Delay(1);
+end

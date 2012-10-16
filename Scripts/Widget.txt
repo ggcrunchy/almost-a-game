@@ -1,0 +1,61 @@
+-----------------------------
+-- Table with widget methods
+-----------------------------
+DefineAssetType("Widget", {
+	-----------------------------
+	-- Sets the widget rectangle
+	-- wp: Widget property set
+	-- x, y: Widget coordinates
+	-- w, h: Widget dimensions
+	-----------------------------
+	SetRect = function(wp, x, y, w, h)
+		wp.x, wp.y, wp.w, wp.h = x, y, w, h;
+	end,
+	
+	---------------------------------------
+	-- Gets the widget rectangle
+	-- wp: Widget property set
+	-- Returns: Coordinates and dimensions
+	---------------------------------------
+	GetRect = function(wp)
+		return wp.x, wp.y, wp.w, wp.h;
+	end
+},
+
+-- New
+-- wp: Widget property set
+-- x, y: Widget coordinates
+-- w, h: Widget dimensions
+----------------------------
+function(wp, x, y, w, h)
+	wp.x, wp.y, wp.w, wp.h = x, y, w, h;
+end);
+
+-----------------------------------------------------------------
+-- Widgets
+-- Builds a closure to generates widgets in successive positions
+-- pos: Closure that generates successive positions
+-- cache: If non-nil, the widget is cached here
+-- Return: Closure used to generate widgets
+-----------------------------------------------------------------
+function Widgets (type, pos, cache)
+	return function (...)
+		local x, y, w, h = pos();
+		local widget = NewAsset(type, x, y, w, h, unpack(arg));
+		if cache then
+			table.insert(cache, widget);
+		end
+		return widget;
+	end
+end
+
+-- Load the widget assets.
+return Load{	
+	"Button.txt",
+	"Checkbox.txt",
+	"Editbox.txt",
+	"Grid.txt",
+	"Image.txt",
+	"Panel.txt",
+	"Static.txt"
+};

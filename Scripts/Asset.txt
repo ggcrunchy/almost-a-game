@@ -1,0 +1,88 @@
+---------------
+-- Asset table
+---------------
+local _Asset = {};
+
+--------------------------------------------
+-- DefineAssetType
+-- Defines a new type of instantiable asset
+-- type: Name of asset type
+-- methods: Method table
+-- new: New routine
+-- base: Name of base type
+--------------------------------------------
+function DefineAssetType (type, methods, new, base)
+	_Asset[type] = {
+		-------------------------------
+		-- Instantiates an asset
+		-- params: Parameter table
+		-- Returns: Asset property set
+		-------------------------------
+		Instance = function(params)
+			-- Method used to invoke constructors, including those of base types.
+			local function Construct (type, ap)
+				if type.base then
+					Construct(_Asset[type.base], ap);
+				end
+				type.new(ap, unpack(params));
+			end
+	
+			-- Build a property set and bind its methods. Construct the asset.
+			local ap = {};
+			setmetatable(ap, { __index = methods });
+			Construct(_Asset[type], ap);
+			return ap;
+		end,
+		
+		base = base,
+		cache = {},
+		methods = methods,
+		new = new
+	};
+	
+	-- If the asset has a base type, bind it to this type.
+	if base then
+		setmetatable(methods, { __index = _Asset[base].methods	});	
+	end
+end
+
+-------------------------------
+-- NewAsset
+-- Generates a new asset
+-- type: Name of asset type
+-- arg: Arguments to generator
+-- Returns: New asset
+-------------------------------
+function NewAsset (type, ...)
+	return _Asset[type].Instance(arg);
+end
+
+---------------------------------
+-- CacheAsset
+-- Generates and caches an asset
+-- type: Name of asset type
+-- key: Key used to cache asset
+-- arg: Arguments to generator
+---------------------------------
+function CacheAsset (type, key, ...)
+	_Asset[type].cache[key] = NewAsset(type, unpack(arg));
+end
+
+--------------------------------
+-- GetAsset
+-- Acquires a cached asset
+-- type: Name of asset type
+-- key: Key used to cache asset
+-- Returns: Cached asset
+--------------------------------
+function GetAsset (type, key)
+	return _Asset[type].cache[key];
+end
+
+-- Load the asset types.
+return Load{
+	"Level.txt",
+	"Picture.txt",
+	"Text.txt",
+	"Widget.txt"
+};

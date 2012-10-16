@@ -1,0 +1,85 @@
+-----------------------------
+-- Table with button methods
+-----------------------------
+DefineAssetType("Button", {
+	---------------------------
+	-- Draws the button
+	-- bp: Button property set
+	-- x, y: Draw coordinates
+	-- w, h: Draw dimensions
+	---------------------------
+	Draw = function(bp, x, y, w, h)
+		local picture = "Button";
+		if bp.bHeld and bp.bIn then
+			picture = "ButtonHeld";
+		elseif bp.bHeld or bp.bIn then
+			picture = "ButtonOver";
+		end
+		GetAsset("Picture", picture):Draw(x, y, w, h);
+		
+		-- Draw centered button text.
+		GetAsset("Text", "Small"):DrawString(bp.text, "cx cy", x, y, w, h);
+	end,
+	
+	---------------------------------------
+	-- Runs a hit test on the button
+	-- bp: Button property set
+	-- cx, cy: Cursor coordinates
+	-- x, y: Button coordinates
+	-- w, h: Button dimensions
+	-- Returns: If true, the button is hit
+	---------------------------------------
+	Hit = function(bp, cx, cy, x, y, w, h)
+		return PointInBox(cx, cy, x, y, w, h);
+	end,
+	
+	---------------------------------------
+	-- Configures the button as the choice
+	-- bp: Button property set
+	-- x, y: Cursor coordinates
+	-- bPress: Press state
+	---------------------------------------
+	Choose = function(bp, x, y, bPress)
+		bp.bHeld, bp.bIn = bPress, true;
+	end,
+	
+	--------------------------------------------------------
+	-- Performs upkeep on the button
+	-- bp: Button property set
+	-- x, y: Cursor coordinates
+	-- bPress: Press state
+	-- bHit: If true, the button is hit
+	-- Returns: If true, the button is no longer the choice
+	--------------------------------------------------------
+	Upkeep = function(bp, x, y, bPress, bHit)
+		bp.bIn = bHit;
+
+		-- If there is a hit and a press, grab the button.
+		if bHit and bPress then
+			bp.bHeld = true;
+		end
+
+		-- If the button is held, release it if there is no press; if it was also hit at
+		-- the same time, trigger its action.
+		if bp.bHeld and not bPress then
+			bp.bHeld = false;
+			if bHit then
+				bp.action();
+			end
+		end
+
+		-- If the button is neither hit nor held, it is no longer the choice.
+		return not bHit and not bp.bHeld;
+	end
+},
+
+-- New
+-- bp: Button property set
+-- x, y: Button coordinates
+-- w, h: Button dimensions
+-- action: Button action
+-- text: Button text
+----------------------------
+function(bp, x, y, w, h, action, text)
+	bp.action, bp.text = action, text;
+end, "Widget");
